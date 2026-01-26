@@ -34,7 +34,6 @@
             font-size: 2.2em;
             position: relative;
         }
-        /* ヘッダーのアイコンリンク */
         .icon-links {
             position: absolute;
             top: 0;
@@ -84,7 +83,6 @@
         .live-badge.active {
             display: block;
         }
-        /* タブ */
         .tabs {
             display: flex;
             justify-content: center;
@@ -117,7 +115,6 @@
         .tab-content.active {
             display: block;
         }
-        /* 検索ボックス */
         .search-box {
             background: white;
             padding: 20px;
@@ -212,7 +209,6 @@
             border-color: #667eea;
             color: white;
         }
-        /* 検索結果 */
         #searchResults {
             margin-top: 20px;
         }
@@ -258,7 +254,6 @@
             align-items: center;
             gap: 6px;
         }
-        /* テレビアイコン */
         .tv-icon-20 {
             position: relative;
             width: 20px;
@@ -320,7 +315,6 @@
             color: white;
             border-color: #667eea;
         }
-        /* テーブル */
         .table-container {
             overflow-x: auto;
             border-radius: 10px;
@@ -358,7 +352,6 @@
         tr:hover td {
             background-color: #f8fbff;
         }
-        /* ローディング */
         .loading-overlay {
             position: fixed;
             top: 0;
@@ -408,7 +401,6 @@
         .copy-toast.show {
             opacity: 1;
         }
-        /* アニメーション */
         @keyframes fadeIn {
             from {
                 opacity: 0;
@@ -434,7 +426,6 @@
                 transform: scale(1.05);
             }
         }
-        /* レスポンシブ */
         @media (max-width: 768px) {
             .container {
                 padding: 15px;
@@ -521,6 +512,7 @@
         let allSongs = [];
         let sortKey = '最終演奏';
         let sortAsc = false;
+        const MAX_DISPLAY = 50;
 
         window.switchTab = (t) => {
             document.querySelectorAll('.tab-btn, .tab-content').forEach(el => el.classList.remove('active'));
@@ -550,31 +542,7 @@
             const pattern = escapeRegex(query);
             try {
                 const regex = new RegExp(pattern, 'gi');
-                return escaped.replace(regex, '<span class="highlight">        function highlightText(text, query) {
-            if (!text || !query) return escapeHtml(text || '');
-            const escaped = escapeHtml(text);
-            const pattern = escapeRegex(query);
-            try {
-                const regex = new RegExp(pattern, 'gi');
-                return escaped.replace(regex, '<span class="highlight">        function escapeRegex(string) {
-            return string.replace(/[*|[\]\\]/g, '\\$&').replace(/./g, '\\s*$&').replace(/[.+?^${}()]/g, '\\$&');
-        }</span>');
-            } catch (e) {
-                return escaped;
-            }
-        }
-
-        function highlightText(text, query) {
-            if (!text || !query) return escapeHtml(text || '');
-            const escaped = escapeHtml(text);
-            const pattern = escapeRegex(query);
-            try {
-                const regex = new RegExp(pattern, 'gi');
                 return escaped.replace(regex, '<span class="highlight">$&</span>');
-            } catch (e) {
-                return escaped;
-            }
-        }</span>');
             } catch (e) {
                 return escaped;
             }
@@ -623,7 +591,7 @@
                     </div>
                     <button class="copy-btn" onclick="copyToClipboard('${escapeQuotes(copyText)}')">コピー</button>
                 </div>
-              `;
+            `;
         }
 
         function performSearch() {
@@ -635,7 +603,6 @@
             const headerYtLink = document.getElementById('headerYtLink');
             const liveBadge = document.getElementById('liveBadge');
             const countDisplay = document.getElementById('resultCountInline');
-            const MAX_DISPLAY = 50; // 最大表示件数
 
             if (query) clearBtn.classList.add('show'); else clearBtn.classList.remove('show');
 
@@ -675,7 +642,6 @@
                 container.innerHTML += createResultItem(filtered[i], query);
             }
             
-            // 件数が多い場合は表示切断を通知
             if (filtered.length > MAX_DISPLAY) {
                 const moreMsg = document.createElement('div');
                 moreMsg.style.cssText = 'text-align: center; padding: 20px; color: #718096; font-size: 14px;';
