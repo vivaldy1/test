@@ -5,132 +5,59 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>朔栖まよ🍼🎷曲検索</title>
     <style>
-        /* 全体デザイン */
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            scrollbar-gutter: stable;
-        }
-
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
-            min-height: 100vh;
-            padding: 20px;
-            color: #333;
-        }
-
-        .container {
-            max-width: 900px;
-            margin: 0 auto;
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 20px;
-            padding: 30px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
-        }
-
-        h1 {
-            color: #4a5568;
-            text-align: center;
-            padding-top: 20px;
-            margin-bottom: 20px;
-            font-size: 2.2em;
-            position: relative;
-        }
-
-        .icon-links {
-            position: absolute;
-            top: 0;
-            right: 0;
-            display: flex;
-            gap: 12px;
-            align-items: center;
-        }
-
+        /* デザイン・レイアウト */
+        * { margin: 0; padding: 0; box-sizing: border-box; scrollbar-gutter: stable; }
+        body { font-family: 'Segoe UI', sans-serif; background: linear-gradient(135deg, #764ba2 0%, #667eea 100%); min-height: 100vh; padding: 20px; color: #333; }
+        .container { max-width: 900px; margin: 0 auto; background: rgba(255, 255, 255, 0.95); border-radius: 20px; padding: 30px; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2); }
+        h1 { color: #4a5568; text-align: center; padding-top: 20px; margin-bottom: 20px; font-size: 2.2em; position: relative; }
+        
+        .icon-links { position: absolute; top: 0; right: 0; display: flex; gap: 12px; }
         .yt-icon { width: 36px; height: 36px; fill: #FF0000; }
         .sheets-icon { width: 36px; height: 36px; fill: #0F9D58; }
 
-        .tabs {
-            display: flex;
-            justify-content: center;
-            margin-bottom: 30px;
-            border-bottom: 2px solid #e2e8f0;
-        }
+        /* タブ */
+        .tabs { display: flex; justify-content: center; margin-bottom: 30px; border-bottom: 2px solid #e2e8f0; }
+        .tab-btn { padding: 12px 24px; font-weight: 600; color: #718096; background: none; border: none; cursor: pointer; border-bottom: 3px solid transparent; transition: all 0.3s; margin-bottom: -2px; }
+        .tab-btn.active { color: #667eea; border-bottom-color: #667eea; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; animation: fadeIn 0.3s; }
 
-        .tab-btn {
-            padding: 12px 24px;
-            font-size: 16px;
-            font-weight: 600;
-            color: #718096;
-            background: none;
-            border: none;
-            cursor: pointer;
-            border-bottom: 3px solid transparent;
-            transition: all 0.3s ease;
-            margin-bottom: -2px;
-        }
+        /* 検索ボックス */
+        .search-box { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05); margin-bottom: 20px; border: 1px solid #e2e8f0; }
+        .search-input-wrapper { position: relative; }
+        input[type="text"] { width: 100%; padding: 14px; padding-right: 90px; border: 2px solid #e2e8f0; border-radius: 10px; font-size: 16px; outline: none; }
+        .result-count-inline { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); color: #667eea; font-weight: bold; }
 
-        .tab-btn.active {
-            color: #667eea;
-            border-bottom-color: #667eea;
-        }
+        /* 検索タイプ（ドラッグスクロール対応） */
+        .search-type { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 10px; margin-top: 15px; cursor: grab; user-select: none; -webkit-overflow-scrolling: touch; }
+        .search-type::-webkit-scrollbar { display: none; }
+        .radio-label { display: flex; align-items: center; cursor: pointer; padding: 8px 16px; border: 2px solid #e2e8f0; border-radius: 20px; font-size: 14px; color: #718096; white-space: nowrap; }
+        .radio-label input { margin-right: 8px; }
+        .radio-label:has(input:checked) { border-color: #667eea; background: #ebf4ff; color: #667eea; font-weight: bold; }
 
-        .tab-content {
-            display: none;
-        }
+        /* 結果アイテム */
+        .result-item { background: white; padding: 15px; padding-right: 80px; border: 1px solid #e2e8f0; border-radius: 10px; margin-bottom: 12px; position: relative; }
+        .song-title { font-size: 18px; font-weight: bold; color: #2d3748; }
+        .song-artist { color: #718096; font-size: 14px; }
+        .song-meta { display: flex; gap: 15px; color: #a0aec0; font-size: 12px; margin-top: 5px; }
+        .copy-btn { position: absolute; bottom: 15px; right: 15px; padding: 6px 12px; cursor: pointer; border-radius: 6px; border: 1px solid #ddd; background: #f9f9f9; font-size: 12px; }
+        .copy-btn:hover { background: #667eea; color: white; }
 
-        .tab-content.active {
-            display: block;
-        }
+        /* 全曲一覧テーブル */
+        .table-container { overflow-x: auto; border-radius: 10px; border: 1px solid #e2e8f0; }
+        table { width: 100%; border-collapse: collapse; min-width: 600px; background: white; }
+        th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #e2e8f0; }
+        th { background: #f7fafc; cursor: pointer; user-select: none; }
+        th:hover { background: #edf2f7; }
 
-        .search-box {
-            background: white;
-            padding: 20px;
-            border-radius: 15px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
-            margin-bottom: 20px;
-            border: 1px solid #e2e8f0;
-        }
+        /* その他UI */
+        .loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(118, 75, 162, 0.95); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 9999; }
+        .loading-spinner { width: 50px; height: 50px; border: 4px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 1s linear infinite; }
+        .copy-toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: #2d3748; color: white; padding: 12px 24px; border-radius: 50px; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
+        .copy-toast.show { opacity: 1; }
 
-        input[type="text"] {
-            width: 100%;
-            padding: 14px;
-            border: 2px solid #e2e8f0;
-            border-radius: 10px;
-            font-size: 16px;
-            outline: none;
-        }
-
-        .result-item {
-            background: white;
-            padding: 15px;
-            border: 1px solid #e2e8f0;
-            border-radius: 10px;
-            margin-bottom: 12px;
-        }
-
-        .song-title { font-weight: bold; font-size: 18px; }
-        .song-artist { color: #718096; }
-
-        .loading-overlay {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(118, 75, 162, 0.95);
-            display: flex; flex-direction: column;
-            justify-content: center; align-items: center;
-            z-index: 9999;
-        }
-
-        .loading-spinner {
-            width: 50px; height: 50px;
-            border: 4px solid rgba(255,255,255,0.3);
-            border-top-color: white;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
         @keyframes spin { to { transform: rotate(360deg); } }
-
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         .hidden { display: none; }
     </style>
 </head>
@@ -138,7 +65,7 @@
 
     <div class="loading-overlay" id="loadingOverlay">
         <div class="loading-spinner"></div>
-        <div class="loading-text" style="color:white; margin-top:15px;">データを読み込んでいます...</div>
+        <div class="loading-text" style="color:white; margin-top:15px; font-weight:bold;">データを読み込んでいます...</div>
     </div>
 
     <div class="container">
@@ -152,73 +79,137 @@
         </h1>
 
         <div class="tabs">
-            <button class="tab-btn active" onclick="switchTab('search')">検索</button>
-            <button class="tab-btn" onclick="switchTab('list')">一覧</button>
+            <button id="tab-btn-search" class="tab-btn active" onclick="switchTab('search')">検索</button>
+            <button id="tab-btn-list" class="tab-btn" onclick="switchTab('list')">全曲一覧</button>
         </div>
 
         <div id="search-tab" class="tab-content active">
             <div class="search-box">
-                <input type="text" id="searchQuery" placeholder="曲名、アーティストを入力">
+                <div class="search-input-wrapper">
+                    <input type="text" id="searchQuery" placeholder="曲名、アーティスト、よみがな、タイアップ">
+                    <span class="result-count-inline" id="resultCountInline"></span>
+                </div>
+                <div class="search-type" id="searchTypeGroup">
+                    <label class="radio-label"><input type="radio" name="stype" value="all" checked>全て</label>
+                    <label class="radio-label"><input type="radio" name="stype" value="song">曲名</label>
+                    <label class="radio-label"><input type="radio" name="stype" value="artist">歌手</label>
+                    <label class="radio-label"><input type="radio" name="stype" value="tieup">タイアップ</label>
+                </div>
             </div>
             <div id="searchResults"></div>
         </div>
 
         <div id="list-tab" class="tab-content">
-            <table style="width:100%; border-collapse: collapse;">
-                <tbody id="songListBody"></tbody>
-            </table>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th onclick="sortTable('曲名')">曲名 ↕</th>
+                            <th onclick="sortTable('アーティスト')">歌手 ↕</th>
+                            <th onclick="sortTable('演奏回数')">回数 ↕</th>
+                            <th onclick="sortTable('最終演奏')">最終演奏 ↕</th>
+                        </tr>
+                    </thead>
+                    <tbody id="songListBody"></tbody>
+                </table>
+            </div>
         </div>
     </div>
 
-    <script>
-        // ★ここにGASのURLを貼る
-        const GAS_URL = 'https://script.google.com/macros/s/AKfycby4dEto3Abr_bmC7nCMBjALGkxut24WTWtDoODMUWXWvx4W7TTNTqXCGQhxRT5QV8qqeA/exec';
+    <div class="copy-toast" id="copyToast">コピーしました！</div>
 
+    <script>
+        const GAS_URL = 'https://script.google.com/macros/s/AKfycbxnVv_hHhp0cPd09qcKwRJDGDYgZvKy9MRi9vUN8d5GFT5J_sH0RdNEtSeaYDXZ19ozMw/exec';
         let allSongs = [];
+        let sortState = { key: '最終演奏', asc: false };
 
         window.onload = async () => {
+            initDragScroll();
             try {
                 const res = await fetch(GAS_URL);
                 allSongs = await res.json();
                 document.getElementById('loadingOverlay').classList.add('hidden');
                 document.getElementById('searchQuery').addEventListener('input', performSearch);
-            } catch (e) {
-                console.error(e);
-            }
+                document.querySelectorAll('input[name=\"stype\"]').forEach(r => r.addEventListener('change', performSearch));
+                renderTable();
+            } catch (e) { console.error(e); }
         };
 
-        function switchTab(tab) {
-            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-            document.getElementById(tab + '-tab').classList.add('active');
+        function switchTab(t) {
+            document.querySelectorAll('.tab-btn, .tab-content').forEach(el => el.classList.remove('active'));
+            document.getElementById('tab-btn-' + t).classList.add('active');
+            document.getElementById(t + '-tab').classList.add('active');
         }
 
         function performSearch() {
-            const query = document.getElementById('searchQuery').value.toLowerCase();
+            const query = document.getElementById('searchQuery').value.toLowerCase().trim();
+            const type = document.querySelector('input[name=\"stype\"]:checked').value;
             const container = document.getElementById('searchResults');
-            container.textContent = '';
+            
+            if (!query) {
+                container.innerHTML = '';
+                document.getElementById('resultCountInline').innerText = '';
+                return;
+            }
 
-            const filtered = allSongs.filter(s => 
-                (s['曲名'] || '').toLowerCase().includes(query) ||
-                (s['アーティスト'] || '').toLowerCase().includes(query)
-            );
-
-            filtered.slice(0, 50).forEach(song => {
-                const item = document.createElement('div');
-                item.className = 'result-item';
-                
-                const t = document.createElement('div');
-                t.className = 'song-title';
-                t.textContent = song['曲名'];
-
-                const a = document.createElement('div');
-                a.className = 'song-artist';
-                a.textContent = song['アーティスト'];
-
-                item.appendChild(t);
-                item.appendChild(a);
-                container.appendChild(item);
+            const filtered = allSongs.filter(s => {
+                const fields = {
+                    song: [s['曲名'], s['曲名の読み']],
+                    artist: [s['アーティスト'], s['アーティストの読み']],
+                    tieup: [s['タイアップ']],
+                    all: [s['曲名'], s['曲名の読み'], s['アーティスト'], s['アーティストの読み'], s['タイアップ']]
+                };
+                return fields[type].some(f => (f || '').toLowerCase().includes(query));
             });
+
+            document.getElementById('resultCountInline').innerText = filtered.length + '件';
+            container.innerHTML = filtered.slice(0, 50).map(s => `
+                <div class="result-item">
+                    <div class="song-title">${s['曲名']}</div>
+                    <div class="song-artist">${s['アーティスト']}</div>
+                    <div class="song-meta">演奏回数: ${s['演奏回数'] || 0}回 / 最終: ${s['最終演奏'] || '-'}</div>
+                    <button class="copy-btn" onclick="copyText('${s['曲名']} / ${s['アーティスト']}')">コピー</button>
+                </div>
+            `).join('');
+        }
+
+        function sortTable(key) {
+            sortState.asc = (sortState.key === key) ? !sortState.asc : false;
+            sortState.key = key;
+            renderTable();
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('songListBody');
+            const sorted = [...allSongs].sort((a, b) => {
+                let v1 = a[sortState.key], v2 = b[sortState.key];
+                if (sortState.key === '演奏回数') { v1 = Number(v1) || 0; v2 = Number(v2) || 0; }
+                return sortState.asc ? (v1 > v2 ? 1 : -1) : (v1 < v2 ? 1 : -1);
+            });
+            tbody.innerHTML = sorted.slice(0, 100).map(s => `
+                <tr>
+                    <td>${s['曲名']}</td>
+                    <td>${s['アーティスト']}</td>
+                    <td>${s['演奏回数']}</td>
+                    <td>${s['最終演奏'] || '-'}</td>
+                </tr>
+            `).join('');
+        }
+
+        function copyText(txt) {
+            navigator.clipboard.writeText(txt).then(() => {
+                const t = document.getElementById('copyToast');
+                t.classList.add('show');
+                setTimeout(() => t.classList.remove('show'), 2000);
+            });
+        }
+
+        function initDragScroll() {
+            const s = document.getElementById('searchTypeGroup');
+            let isDown = false, startX, scrollLeft;
+            s.onmousedown = (e) => { isDown = true; startX = e.pageX - s.offsetLeft; scrollLeft = s.scrollLeft; };
+            s.onmouseleave = s.onmouseup = () => isDown = false;
+            s.onmousemove = (e) => { if(!isDown) return; const x = e.pageX - s.offsetLeft; s.scrollLeft = scrollLeft - (x - startX); };
         }
     </script>
 </body>
