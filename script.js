@@ -3,7 +3,7 @@ let allSongs = [];
 let sortKey = '最終演奏';
 let sortAsc = false;
 
-// タブ切り替え関数（グローバルに配置してHTMLのonclickから呼べるようにする）
+// タブ切り替え
 window.switchTab = (t) => {
     document.querySelectorAll('.tab-btn, .tab-content').forEach(el => el.classList.remove('active'));
     document.getElementById('tab-btn-' + t)?.classList.add('active');
@@ -12,57 +12,43 @@ window.switchTab = (t) => {
 
 window.onload = async () => {
     initDragScroll();
-    const loader = document.getElementById('loadingOverlay') || document.querySelector('.loading-overlay');
-    
+    const loader = document.getElementById('loadingOverlay');
     try {
         const res = await fetch(GAS_URL);
         allSongs = await res.json();
-
+        
         document.getElementById('searchQuery')?.addEventListener('input', performSearch);
         document.querySelectorAll('input[name="stype"]').forEach(r => r.addEventListener('change', performSearch));
         
         renderTable();
         if (loader) loader.classList.add('hidden');
-    } catch (e) {
-        console.error(e);
-        const txt = document.querySelector('.loading-text');
-        if (txt) txt.innerText = 'エラーが発生しました。';
-    }
+    } catch (e) { console.error(e); }
 };
 
 function renderTable() {
     const tbody = document.getElementById('songListBody');
     if (!tbody) return;
-
     const sorted = [...allSongs].sort((a, b) => {
         let v1 = a[sortKey] || '', v2 = b[sortKey] || '';
         if (sortKey === '演奏回数') { v1 = Number(v1) || 0; v2 = Number(v2) || 0; }
         return sortAsc ? (v1 > v2 ? 1 : -1) : (v1 < v2 ? 1 : -1);
     });
 
-    // TrustedHTML対策: innerHTMLを使わず一括生成
-    tbody.innerHTML = ''; 
-    const rows = sorted.map(s => {
-        return `<tr>
-            <td>${s['曲名'] || '-'}<br><small style="color:#a0aec0;">${s['曲名の読み'] || ''}</small></td>
-            <td>${s['アーティスト'] || '-'}<br><small style="color:#a0aec0;">${s['アーティストの読み'] || ''}</small></td>
+    tbody.innerHTML = sorted.map(s => `
+        <tr>
+            <td>${s['曲名']}<br><span class="table-ruby">${s['曲名の読み'] || ''}</span></td>
+            <td>${s['アーティスト']}<br><span class="table-ruby">${s['アーティストの読み'] || ''}</span></td>
             <td>${s['演奏回数'] || 0}</td>
             <td>${formatDate(s['最終演奏'])}</td>
-        </tr>`;
-    }).join('');
-    tbody.insertAdjacentHTML('beforeend', rows);
+        </tr>
+    `).join('');
 }
 
 function performSearch() {
     const query = document.getElementById('searchQuery').value.trim().toLowerCase();
     const type = document.querySelector('input[name="stype"]:checked').value;
     const container = document.getElementById('searchResults');
-    
-    if (!query) {
-        container.innerHTML = '';
-        document.getElementById('resultCountInline').innerText = '';
-        return;
-    }
+    if (!query) { container.innerHTML = ''; return; }
 
     const filtered = allSongs.filter(s => {
         const fields = {
@@ -76,26 +62,23 @@ function performSearch() {
 
     document.getElementById('resultCountInline').innerText = filtered.length + '件';
     
-    container.innerHTML = '';
-    const items = filtered.map(s => {
-        // YouTube IDがある場合はライブURLを生成、なければ空
+    container.innerHTML = filtered.map(s => {
         const ytLink = s['YouTube'] ? `https://www.youtube.com/live/${s['YouTube']}` : '';
-        
-        return `<div class="result-item">
-            <div class="song-title">${s['曲名']} <small style="font-weight:normal; color:#a0aec0; font-size:0.7em;">${s['曲名の読み'] || ''}</small></div>
-            <div class="song-artist">${s['アーティスト']} <small style="color:#a0aec0; font-size:0.8em;">${s['アーティストの読み'] || ''}</small></div>
-            ${s['タイアップ'] ? `<div class="song-tieup">📺 ${s['タイアップ']}</div>` : ''}
-            <div class="song-meta">
-                <span>演奏回数: ${s['演奏回数'] || 0}回</span>
-                <span>最終演奏: ${formatDate(s['最終演奏'])}</span>
-            </div>
-            <div class="item-actions">
-                <button class="copy-btn" onclick="copyText('${(s['曲名']||'').replace(/'/g,"\\'")} / ${(s['アーティスト']||'').replace(/'/g,"\\'")}')">コピー</button>
-                ${ytLink ? `<a href="${ytLink}" target="_blank" class="yt-link-btn">YouTube Live</a>` : ''}
-            </div>
-        </div>`;
+        return `
+            <div class="result-item">
+                <div class="song-title">${s['曲名']}<span class="ruby">${s['曲名の読み'] || ''}</span></div>
+                <div class="song-artist">${s['アーティスト']}<span class="ruby">${s['アーティストの読み'] || ''}</span></div>
+                ${s['タイアップ'] ? `<div class="song-tieup">📺 ${s['タイアップ']}</div>` : ''}
+                <div class="song-meta">
+                    <span>演奏回数: ${s['演奏回数'] || 0}回</span>
+                    <span>最終演奏: ${formatDate(s['最終演奏'])}</span>
+                </div>
+                <div class="item-actions">
+                    <button class="copy-btn" onclick="copyText('${(s['曲名']||'').replace(/'/g,"\\'")} / ${(s['アーティスト']||'').replace(/'/g,"\\'")}')">コピー</button>
+                    ${ytLink ? `<a href="${ytLink}" target="_blank" class="yt-link-btn">▶ YouTube Live</a>` : ''}
+                </div>
+            </div>`;
     }).join('');
-    container.insertAdjacentHTML('beforeend', items);
 }
 
 function formatDate(dateStr) {
