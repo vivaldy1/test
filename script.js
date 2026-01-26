@@ -5,20 +5,45 @@ let sortAsc = false;
 
 window.onload = async () => {
     initDragScroll();
+    const loadingText = document.querySelector('.loading-text');
+    
     try {
+        console.log("Fetching data from GAS...");
         const res = await fetch(GAS_URL);
-        allSongs = await res.json(); // すでにGAS側で軽量化済み
+        
+        if (!res.ok) {
+            throw new Error(`HTTPエラー! ステータス: ${res.status}`);
+        }
 
+        const rawData = await res.json();
+        console.log("Data received:", rawData);
+
+        if (rawData.error) {
+            throw new Error(`GAS内部エラー: ${rawData.error}`);
+        }
+
+        allSongs = rawData;
+        
+        // 正常終了
         document.getElementById('loadingOverlay').classList.add('hidden');
         document.getElementById('searchQuery').addEventListener('input', performSearch);
         document.querySelectorAll('input[name="stype"]').forEach(r => r.addEventListener('change', performSearch));
-        
         renderTable();
+
     } catch (e) {
-        console.error(e);
-        document.querySelector('.loading-text').innerText = 'エラーが発生しました。';
+        console.error("Debug Error:", e);
+        // ユーザーの画面にエラーを表示して「なぜ止まっているか」を可視化
+        loadingText.style.color = "#ff4d4d";
+        loadingText.innerHTML = `
+            読み込み失敗<br>
+            <span style="font-size:0.8em; font-weight:normal;">
+                理由: ${e.message}<br>
+                ※GASのURLが正しいか、公開設定が「全員」か確認してください。
+            </span>`;
     }
 };
+
+// --- 以下、描画処理（変更なし） ---
 
 function switchTab(t) {
     document.querySelectorAll('.tab-btn, .tab-content').forEach(el => el.classList.remove('active'));
@@ -78,6 +103,7 @@ function handleSort(key) {
 
 function renderTable() {
     const tbody = document.getElementById('songListBody');
+    if (!tbody) return;
     const sorted = [...allSongs].sort((a, b) => {
         let v1 = a[sortKey] || '', v2 = b[sortKey] || '';
         if (sortKey === '演奏回数') { v1 = Number(v1) || 0; v2 = Number(v2) || 0; }
