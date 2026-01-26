@@ -243,21 +243,16 @@
             font-size: 15px;
             margin-bottom: 6px;
         }
-        .ruby {
-            font-size: 11px;
-            color: #a0aec0;
-            margin-left: 4px;
-        }
         .song-yomi {
             font-size: 11px;
             color: #a0aec0;
-            margin-top: 6px;
+            margin-bottom: 6px;
             line-height: 1.2;
         }
         .song-tieup {
             color: #a0aec0;
             font-size: 13px;
-            margin-top: 6px;
+            margin-bottom: 6px;
             font-weight: 500;
             display: flex;
             align-items: center;
@@ -533,98 +528,15 @@
             document.getElementById(t + '-tab')?.classList.add('active');
         };
 
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/[&<>"']/g, m => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+            }[m]));
+        }
+
         function escapeRegex(string) {
-            return string.replace(/[*|[\]\\]/g, '\\        window.onload = async () => {
-            const loader = document.getElementById('loadingOverlay');
-            const searchInput = document.getElementById('searchQuery');
-            const clearBtn = document.getElementById('clearSearch');
-
-            if (clearBtn) {
-                clearBtn.onclick = () => { 
-                    searchInput.value = ''; 
-                    performSearch(); 
-                };
-            }
-
-            try {
-                const res = await fetch(GAS_URL);
-                allSongs = await res.json();
-                
-                searchInput?.addEventListener('input', performSearch);
-                document.querySelectorAll('input[name="stype"]').forEach(r => {
-                    r.addEventListener('change', performSearch);
-                });
-                
-                renderTable();
-                if (loader) loader.classList.add('hidden');
-            } catch (e) {
-                console.error("Data Load Error:", e);
-                if (loader) {
-                    const text = loader.querySelector('.loading-text');
-                    if (text) text.innerText = "データの読み込みに失敗しました。";
-                }
-            }
-        };').replace(/./g, '\\s*        window.onload = async () => {
-            const loader = document.getElementById('loadingOverlay');
-            const searchInput = document.getElementById('searchQuery');
-            const clearBtn = document.getElementById('clearSearch');
-
-            if (clearBtn) {
-                clearBtn.onclick = () => { 
-                    searchInput.value = ''; 
-                    performSearch(); 
-                };
-            }
-
-            try {
-                const res = await fetch(GAS_URL);
-                allSongs = await res.json();
-                
-                searchInput?.addEventListener('input', performSearch);
-                document.querySelectorAll('input[name="stype"]').forEach(r => {
-                    r.addEventListener('change', performSearch);
-                });
-                
-                renderTable();
-                if (loader) loader.classList.add('hidden');
-            } catch (e) {
-                console.error("Data Load Error:", e);
-                if (loader) {
-                    const text = loader.querySelector('.loading-text');
-                    if (text) text.innerText = "データの読み込みに失敗しました。";
-                }
-            }
-        };').replace(/[.+?^${}()]/g, '\\        window.onload = async () => {
-            const loader = document.getElementById('loadingOverlay');
-            const searchInput = document.getElementById('searchQuery');
-            const clearBtn = document.getElementById('clearSearch');
-
-            if (clearBtn) {
-                clearBtn.onclick = () => { 
-                    searchInput.value = ''; 
-                    performSearch(); 
-                };
-            }
-
-            try {
-                const res = await fetch(GAS_URL);
-                allSongs = await res.json();
-                
-                searchInput?.addEventListener('input', performSearch);
-                document.querySelectorAll('input[name="stype"]').forEach(r => {
-                    r.addEventListener('change', performSearch);
-                });
-                
-                renderTable();
-                if (loader) loader.classList.add('hidden');
-            } catch (e) {
-                console.error("Data Load Error:", e);
-                if (loader) {
-                    const text = loader.querySelector('.loading-text');
-                    if (text) text.innerText = "データの読み込みに失敗しました。";
-                }
-            }
-        };');
+            return string.replace(/[*|[\]\\]/g, '\\$&').replace(/./g, '\\s*$&').replace(/[.+?^${}()]/g, '\\$&');
         }
 
         function highlightText(text, query) {
@@ -633,37 +545,7 @@
             const pattern = escapeRegex(query);
             try {
                 const regex = new RegExp(pattern, 'gi');
-                return escaped.replace(regex, '<span class="highlight">        window.onload = async () => {
-            const loader = document.getElementById('loadingOverlay');
-            const searchInput = document.getElementById('searchQuery');
-            const clearBtn = document.getElementById('clearSearch');
-
-            if (clearBtn) {
-                clearBtn.onclick = () => { 
-                    searchInput.value = ''; 
-                    performSearch(); 
-                };
-            }
-
-            try {
-                const res = await fetch(GAS_URL);
-                allSongs = await res.json();
-                
-                searchInput?.addEventListener('input', performSearch);
-                document.querySelectorAll('input[name="stype"]').forEach(r => {
-                    r.addEventListener('change', performSearch);
-                });
-                
-                renderTable();
-                if (loader) loader.classList.add('hidden');
-            } catch (e) {
-                console.error("Data Load Error:", e);
-                if (loader) {
-                    const text = loader.querySelector('.loading-text');
-                    if (text) text.innerText = "データの読み込みに失敗しました。";
-                }
-            }
-        };</span>');
+                return escaped.replace(regex, '<span class="highlight">$&</span>');
             } catch (e) {
                 return escaped;
             }
@@ -671,6 +553,13 @@
 
         function escapeQuotes(str) {
             return str.replace(/'/g, "\\'");
+        }
+
+        function formatDate(dateStr) {
+            if (!dateStr || dateStr === '-') return '-';
+            const d = new Date(dateStr);
+            if (isNaN(d.getTime())) return dateStr;
+            return `${d.getFullYear()}/${(d.getMonth()+1).toString().padStart(2,'0')}/${d.getDate().toString().padStart(2,'0')}`;
         }
 
         function createResultItem(song, query) {
@@ -707,38 +596,6 @@
                 </div>
               `;
         }
-
-        window.onload = async () => {
-            const loader = document.getElementById('loadingOverlay');
-            const searchInput = document.getElementById('searchQuery');
-            const clearBtn = document.getElementById('clearSearch');
-
-            if (clearBtn) {
-                clearBtn.onclick = () => { 
-                    searchInput.value = ''; 
-                    performSearch(); 
-                };
-            }
-
-            try {
-                const res = await fetch(GAS_URL);
-                allSongs = await res.json();
-                
-                searchInput?.addEventListener('input', performSearch);
-                document.querySelectorAll('input[name="stype"]').forEach(r => {
-                    r.addEventListener('change', performSearch);
-                });
-                
-                renderTable();
-                if (loader) loader.classList.add('hidden');
-            } catch (e) {
-                console.error("Data Load Error:", e);
-                if (loader) {
-                    const text = loader.querySelector('.loading-text');
-                    if (text) text.innerText = "データの読み込みに失敗しました。";
-                }
-            }
-        };
 
         function performSearch() {
             const input = document.getElementById('searchQuery');
@@ -782,76 +639,10 @@
                 liveBadge.classList.remove('active');
             }
 
-        function escapeQuotes(str) {
-            return str.replace(/'/g, "\\'");
-        }
-
-        function createResultItem(song, query) {
-            const date = song['最終演奏'] ? formatDate(song['最終演奏']) : '-';
-            const count = song['演奏回数'] || 0;
-            const title = song['曲名'] || '不明';
-            const artist = song['アーティスト'] || '不明';
-            const titleYomi = song['曲名の読み'] || '';
-            const artistYomi = song['アーティストの読み'] || '';
-            const tieup = song['タイアップ'] || '';
-            
-            const hTitle = highlightText(title, query);
-            const hArtist = highlightText(artist, query);
-            const hTitleYomi = highlightText(titleYomi, query);
-            const hArtistYomi = highlightText(artistYomi, query);
-            const hTieup = highlightText(tieup, query);
-            
-            const copyText = title + '／' + artist;
-            
-            let yomiDisplay = (titleYomi || artistYomi) ? `<div class="song-yomi">${hTitleYomi}${artistYomi ? ' / ' + hArtistYomi : ''}</div>` : '';
-            let tieupDisplay = tieup ? `<div class="song-tieup"><div class="tv-icon-20"></div><span>${hTieup}</span></div>` : '';
-            
-            return `
-                <div class="result-item">
-                    <div class="song-title">${hTitle}</div>
-                    <div class="song-artist">${hArtist}</div>
-                    ${yomiDisplay}
-                    ${tieupDisplay}
-                    <div class="song-meta">
-                      <span>演奏回数: ${count}回</span>
-                      <span>最終演奏: ${date}</span>
-                    </div>
-                    <button class="copy-btn" onclick="copyToClipboard('${escapeQuotes(copyText)}')">コピー</button>
-                </div>
-              `;
-        }
-        }
-
-        function escapeRegex(string) {
-            return string.replace(/[*|[\]\\]/g, '\\        function highlightMatch(text, query) {
-            if (!query) return text;
-            const regex = new RegExp(`(${query})`, 'gi');
-            return text.replace(regex, '<span class="highlight">$1</span>');
-        }').replace(/./g, '\\s*        function highlightMatch(text, query) {
-            if (!query) return text;
-            const regex = new RegExp(`(${query})`, 'gi');
-            return text.replace(regex, '<span class="highlight">$1</span>');
-        }').replace(/[.+?^${}()]/g, '\\        function highlightMatch(text, query) {
-            if (!query) return text;
-            const regex = new RegExp(`(${query})`, 'gi');
-            return text.replace(regex, '<span class="highlight">$1</span>');
-        }');
-        }
-
-        function highlightText(text, query) {
-            if (!text || !query) return escapeHtml(text || '');
-            const escaped = escapeHtml(text);
-            const pattern = escapeRegex(query);
-            try {
-                const regex = new RegExp(pattern, 'gi');
-                return escaped.replace(regex, '<span class="highlight">        function highlightMatch(text, query) {
-            if (!query) return text;
-            const regex = new RegExp(`(${query})`, 'gi');
-            return text.replace(regex, '<span class="highlight">$1</span>');
-        }</span>');
-            } catch (e) {
-                return escaped;
-            }
+            container.innerHTML = '';
+            filtered.forEach(s => {
+                container.innerHTML += createResultItem(s, query);
+            });
         }
 
         function renderTable() {
@@ -863,7 +654,6 @@
                 return sortAsc ? (v1 > v2 ? 1 : -1) : (v1 < v2 ? 1 : -1);
             });
             tbody.innerHTML = '';
-            const fragment = document.createDocumentFragment();
             sorted.forEach(s => {
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
@@ -872,23 +662,8 @@
                     <td>${s['演奏回数'] || 0}</td>
                     <td>${formatDate(s['最終演奏'])}</td>
                 `;
-                fragment.appendChild(tr);
+                tbody.appendChild(tr);
             });
-            tbody.appendChild(fragment);
-        }
-
-        function formatDate(dateStr) {
-            if (!dateStr || dateStr === '-') return '-';
-            const d = new Date(dateStr);
-            if (isNaN(d.getTime())) return dateStr;
-            return `${d.getFullYear()}/${(d.getMonth()+1).toString().padStart(2,'0')}/${d.getDate().toString().padStart(2,'0')}`;
-        }
-
-        function escapeHtml(str) {
-            if (!str) return '';
-            return str.replace(/[&<>"']/g, m => ({
-                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-            }[m]));
         }
 
         window.handleSort = (key) => {
@@ -905,6 +680,38 @@
                     setTimeout(() => t.classList.remove('show'), 2000); 
                 }
             });
+        };
+
+        window.onload = async () => {
+            const loader = document.getElementById('loadingOverlay');
+            const searchInput = document.getElementById('searchQuery');
+            const clearBtn = document.getElementById('clearSearch');
+
+            if (clearBtn) {
+                clearBtn.onclick = () => { 
+                    searchInput.value = ''; 
+                    performSearch(); 
+                };
+            }
+
+            try {
+                const res = await fetch(GAS_URL);
+                allSongs = await res.json();
+                
+                searchInput?.addEventListener('input', performSearch);
+                document.querySelectorAll('input[name="stype"]').forEach(r => {
+                    r.addEventListener('change', performSearch);
+                });
+                
+                renderTable();
+                if (loader) loader.classList.add('hidden');
+            } catch (e) {
+                console.error("Data Load Error:", e);
+                if (loader) {
+                    const text = loader.querySelector('.loading-text');
+                    if (text) text.innerText = "データの読み込みに失敗しました。";
+                }
+            }
         };
     </script>
 </body>
