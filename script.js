@@ -169,7 +169,7 @@ function performSearch() {
         item.innerHTML = `
             <div class="song-title">${title}</div>
             <div class="song-artist">${artist}</div>
-            <div class="song-yomi">${titleYomi} ${artistYomi}</div>
+            <div class="song-yomi">${titleYomi} / ${artistYomi}</div>
             ${tieup}
             <div class="song-meta">
                 <span>演奏回数: ${count}回</span>
