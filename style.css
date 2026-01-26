@@ -281,6 +281,16 @@ input[type="text"]:focus {
     background-repeat: no-repeat;
     background-position: center 2px;
 }
+.song-tieup::after {
+    content: '';
+    position: absolute;
+    right: 1.5px;
+    top: 3px;
+    width: 2px;
+    height: 2px;
+    background: #4a5568;
+    box-shadow: 0 4px 0 #4a5568, 0 8px 0 #4a5568;
+}
 
 .song-meta {
     display: flex;
