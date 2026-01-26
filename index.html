@@ -1,5 +1,225 @@
-{
-  "type": "text/html",
-  "title": "最終統合版 index.html (GitHub Pages用)",
-  "content": "<!DOCTYPE html>\n<html lang=\"ja\">\n<head>\n    <meta charset=\"UTF-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n    <title>朔栖まよ🍼🎷曲検索</title>\n    <style>\n        /* デザイン統合 */\n        * { margin: 0; padding: 0; box-sizing: border-box; scrollbar-gutter: stable; }\n        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #764ba2 0%, #667eea 100%); min-height: 100vh; padding: 20px; color: #333; }\n        .container { max-width: 900px; margin: 0 auto; background: rgba(255, 255, 255, 0.95); border-radius: 20px; padding: 30px; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2); }\n        h1 { color: #4a5568; text-align: center; padding-top: 20px; margin-bottom: 20px; font-size: 2.2em; position: relative; }\n        .icon-links { position: absolute; top: 0; right: 0; display: flex; gap: 12px; align-items: center; }\n        .icon-link { display: inline-flex; transition: transform 0.2s ease; text-decoration: none; position: relative; }\n        .icon-link:hover { transform: scale(1.1); }\n        .yt-icon { width: 36px; height: 36px; fill: #FF0000; }\n        .sheets-icon { width: 36px; height: 36px; fill: #0F9D58; }\n        .live-badge { position: absolute; top: -4px; right: -4px; background: #764ba2; color: white; font-size: 9px; font-weight: bold; padding: 2px 5px; border-radius: 3px; animation: pulse 2s ease-in-out infinite; pointer-events: none; }\n        \n        .tabs { display: flex; justify-content: center; margin-bottom: 30px; border-bottom: 2px solid #e2e8f0; }\n        .tab-btn { padding: 12px 24px; font-size: 16px; font-weight: 600; color: #718096; background: none; border: none; cursor: pointer; border-bottom: 3px solid transparent; transition: all 0.3s ease; margin-bottom: -2px; }\n        .tab-btn.active { color: #667eea; border-bottom-color: #667eea; }\n        .tab-content { display: none; animation: fadeIn 0.3s ease; }\n        .tab-content.active { display: block; }\n\n        .search-box { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05); margin-bottom: 20px; border: 1px solid #e2e8f0; }\n        .search-input-wrapper { position: relative; }\n        input[type=\"text\"] { width: 100%; padding: 14px; padding-right: 90px; border: 2px solid #e2e8f0; border-radius: 10px; font-size: 16px; }\n        .result-count-inline { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); color: #667eea; font-weight: bold; font-size: 14px; }\n        \n        .search-type { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 5px; margin-top: 15px; cursor: grab; }\n        .radio-label { display: flex; align-items: center; cursor: pointer; padding: 8px 16px; border: 2px solid #e2e8f0; border-radius: 20px; font-size: 14px; color: #718096; white-space: nowrap; }\n        input[type=\"radio\"] { margin-right: 8px; }\n\n        .result-item { background: white; padding: 15px; padding-bottom: 20px; padding-right: 70px; border: 1px solid #e2e8f0; border-radius: 10px; margin-bottom: 12px; position: relative; transition: transform 0.2s; }\n        .song-title { font-size: 18px; font-weight: bold; color: #2d3748; }\n        .song-artist { color: #718096; font-size: 15px; }\n        .song-yomi { font-size: 11px; color: #a0aec0; margin-top: 6px; }\n        .song-meta { display: flex; gap: 15px; color: #a0aec0; font-size: 13px; margin-top: 6px; }\n        .highlight { background-color: #fffaf0; color: #ed8936; font-weight: bold; }\n        \n        .table-container { overflow-x: auto; border-radius: 10px; border: 1px solid #e2e8f0; }\n        table { width: 100%; border-collapse: collapse; min-width: 600px; }\n        th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #e2e8f0; }\n        th { background: #f7fafc; cursor: pointer; user-select: none; }\n        \n        .loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(118, 75, 162, 0.9); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 9999; }\n        .loading-spinner { width: 50px; height: 50px; border: 4px solid rgba(255, 255, 255, 0.3); border-top-color: white; border-radius: 50%; animation: spin 1s linear infinite; }\n        .loading-text { color: white; margin-top: 15px; font-weight: bold; font-size: 18px; }\n        .copy-toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: #2d3748; color: white; padding: 12px 24px; border-radius: 50px; opacity: 0; transition: opacity 0.3s; z-index: 1000; }\n        .copy-toast.show { opacity: 1; }\n        \n        @keyframes spin { to { transform: rotate(360deg); } }\n        @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }\n        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }\n        .hidden { display: none; }\n    </style>\n</head>\n<body>\n    <div class=\"loading-overlay\" id=\"loadingOverlay\">\n        <div class=\"loading-spinner\"></div>\n        <div class=\"loading-text\" id=\"loadingStatus\">データを読み込んでいます...</div>\n    </div>\n\n    <div class=\"container\">\n        <h1>\n            朔栖まよ🍼🎷曲検索\n            <div class=\"icon-links\">\n                <a href=\"https://www.youtube.com/@asaxmayo\" id=\"ytLink\" target=\"_blank\" class=\"icon-link\">\n                    <svg class=\"yt-icon\" viewBox=\"0 0 24 24\"><path d=\"M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z\"/></svg>\n                </a>\n                <a href=\"https://docs.google.com/spreadsheets/d/1lPv2iDZbVeVTyvMNHXIZMUfDFd7rDrebFVKBckSMoF4/edit\" target=\"_blank\" class=\"icon-link\">\n                    <svg class=\"sheets-icon\" viewBox=\"0 0 24 24\"><path d=\"M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-8 14H7v-4h4v4zm0-6H7V7h4v4zm6 6h-4v-4h4v4zm0-6h-4V7h4v4z\"/></svg>\n                </a>\n            </div>\n        </h1>\n\n        <div class=\"tabs\">\n            <button id=\"tab-btn-search\" class=\"tab-btn active\" onclick=\"switchTab('search')\">検索</button>\n            <button id=\"tab-btn-list\" class=\"tab-btn\" onclick=\"switchTab('list')\">全曲一覧</button>\n        </div>\n\n        <div id=\"search-tab\" class=\"tab-content active\">\n            <div class=\"search-box\">\n                <div class=\"input-group\">\n                    <div class=\"search-input-wrapper\">\n                        <input type=\"text\" id=\"searchQuery\" placeholder=\"曲名、アーティスト、よみがなを入力\">\n                        <span class=\"result-count-inline\" id=\"resultCountInline\"></span>\n                    </div>\n                </div>\n                <div class=\"search-type\" id=\"searchTypeGroup\">\n                    <label class=\"radio-label\"><input type=\"radio\" name=\"searchType\" value=\"all\" checked><span>全て</span></label>\n                    <label class=\"radio-label\"><input type=\"radio\" name=\"searchType\" value=\"song\"><span>曲名</span></label>\n                    <label class=\"radio-label\"><input type=\"radio\" name=\"searchType\" value=\"artist\"><span>アーティスト</span></label>\n                    <label class=\"radio-label\"><input type=\"radio\" name=\"searchType\" value=\"tieup\"><span>タイアップ</span></label>\n                </div>\n            </div>\n            <div id=\"searchResults\" class=\"results\"></div>\n            <div id=\"noSearchResults\" class=\"hidden\" style=\"text-align:center; color:#a0aec0; margin-top:20px;\">一致する曲が見つかりませんでした</div>\n        </div>\n\n        <div id=\"list-tab\" class=\"tab-content\">\n            <div class=\"table-container\">\n                <table>\n                    <thead>\n                        <tr>\n                            <th onclick=\"handleSort('曲名')\">曲名 ↕</th>\n                            <th onclick=\"handleSort('アーティスト')\">アーティスト ↕</th>\n                            <th onclick=\"handleSort('最終演奏')\">最終演奏 ↕</th>\n                            <th onclick=\"handleSort('演奏回数')\">回数 ↕</th>\n                        </tr>\n                    </thead>\n                    <tbody id=\"songListBody\"></tbody>\n                </table>\n            </div>\n            <div id=\"listPagination\" class=\"pagination\"></div>\n        </div>\n    </div>\n\n    <div class=\"copy-toast\" id=\"copyToast\">コピーしました!</div>\n\n    <script>\n        // --- 【設定】GASのWebアプリURL --- \n        const GAS_URL = 'ここにあなたのGASデプロイURL';\n\n        let allSongs = [];\n        let filteredSongs = [];\n        let currentPage = 1;\n        const itemsPerPage = 50;\n        let currentSort = { key: '最終演奏', ascending: false };\n\n        // 起動処理\n        window.onload = async () => {\n            initDragScroll();\n            await loadData();\n            fetchLiveStatus();\n        };\n\n        async function loadData() {\n            try {\n                const res = await fetch(GAS_URL);\n                allSongs = await res.json();\n                filteredSongs = [...allSongs];\n                onDataLoaded();\n            } catch (err) {\n                document.getElementById('loadingStatus').textContent = 'データの取得に失敗しました。';\n                console.error(err);\n            }\n        }\n\n        function onDataLoaded() {\n            document.getElementById('loadingOverlay').classList.add('hidden');\n            document.getElementById('searchQuery').addEventListener('input', performSearch);\n            document.querySelectorAll('input[name=\"searchType\"]').forEach(r => r.addEventListener('change', performSearch));\n            applySort();\n            renderTable();\n        }\n\n        // 検索ロジック (Security Fix: textContentを使用)\n        function performSearch() {\n            const query = document.getElementById('searchQuery').value.trim().toLowerCase();\n            const type = document.querySelector('input[name=\"searchType\"]:checked').value;\n            const container = document.getElementById('searchResults');\n            container.textContent = '';\n\n            if (!query) {\n                document.getElementById('resultCountInline').textContent = '';\n                return;\n            }\n\n            const results = allSongs.filter(s => {\n                const t = (s['曲名'] || '').toLowerCase();\n                const ty = (s['曲名の読み'] || '').toLowerCase();\n                const a = (s['アーティスト'] || '').toLowerCase();\n                const ay = (s['アーティストの読み'] || '').toLowerCase();\n                const tie = (s['タイアップ'] || '').toLowerCase();\n\n                if (type === 'song') return t.includes(query) || ty.includes(query);\n                if (type === 'artist') return a.includes(query) || ay.includes(query);\n                if (type === 'tieup') return tie.includes(query);\n                return t.includes(query) || ty.includes(query) || a.includes(query) || ay.includes(query) || tie.includes(query);\n            });\n\n            document.getElementById('resultCountInline').textContent = results.length + '件';\n            document.getElementById('noSearchResults').classList.toggle('hidden', results.length > 0);\n\n            results.slice(0, 50).forEach(song => {\n                const card = document.createElement('div');\n                card.className = 'result-item';\n\n                const titleEl = document.createElement('div');\n                titleEl.className = 'song-title';\n                titleEl.textContent = song['曲名'];\n\n                const artistEl = document.createElement('div');\n                artistEl.className = 'song-artist';\n                artistEl.textContent = song['アーティスト'];\n\n                const metaEl = document.createElement('div');\n                metaEl.className = 'song-meta';\n                metaEl.textContent = `演奏回数: ${song['演奏回数'] || 0}回 / 最終: ${song['最終演奏'] || '-'}`;\n\n                const copyBtn = document.createElement('button');\n                copyBtn.style.cssText = \"position:absolute; bottom:15px; right:15px; padding:6px 12px; cursor:pointer; border-radius:6px; border:1px solid #ddd; background:#f9f9f9;\";\n                copyBtn.textContent = 'コピー';\n                copyBtn.onclick = () => copyText(song['曲名'] + ' / ' + song['アーティスト']);\n\n                card.appendChild(titleEl);\n                card.appendChild(artistEl);\n                card.appendChild(metaEl);\n                card.appendChild(copyBtn);\n                container.appendChild(card);\n            });\n        }\n\n        // テーブル描画\n        function renderTable() {\n            const tbody = document.getElementById('songListBody');\n            tbody.textContent = '';\n            const start = (currentPage - 1) * itemsPerPage;\n            const items = filteredSongs.slice(start, start + itemsPerPage);\n\n            items.forEach(s => {\n                const tr = document.createElement('tr');\n                ['曲名', 'アーティスト', '最終演奏', '演奏回数'].forEach(k => {\n                    const td = document.createElement('td');\n                    td.textContent = s[k] || '-';\n                    tr.appendChild(td);\n                });\n                tbody.appendChild(tr);\n            });\n        }\n\n        function handleSort(key) {\n            if (currentSort.key === key) currentSort.ascending = !currentSort.ascending;\n            else { currentSort.key = key; currentSort.ascending = true; }\n            applySort();\n            renderTable();\n        }\n\n        function applySort() {\n            filteredSongs.sort((a, b) => {\n                let v1 = a[currentSort.key] || '', v2 = b[currentSort.key] || '';\n                if (currentSort.key === '演奏回数') { v1 = parseInt(v1) || 0; v2 = parseInt(v2) || 0; }\n                return currentSort.ascending ? (v1 > v2 ? 1 : -1) : (v1 < v2 ? 1 : -1);\n            });\n        }\n\n        function switchTab(name) {\n            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));\n            document.getElementById('tab-btn-' + name).classList.add('active');\n            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));\n            document.getElementById(name + '-tab').classList.add('active');\n        }\n\n        function copyText(text) {\n            navigator.clipboard.writeText(text).then(() => {\n                const t = document.getElementById('copyToast');\n                t.classList.add('show');\n                setTimeout(() => t.classList.remove('show'), 2000);\n            });\n        }\n\n        function initDragScroll() {\n            const slider = document.getElementById('searchTypeGroup');\n            let isDown = false, startX, scrollLeft;\n            slider.addEventListener('mousedown', (e) => {\n                isDown = true; startX = e.pageX - slider.offsetLeft; scrollLeft = slider.scrollLeft;\n            });\n            slider.addEventListener('mouseleave', () => isDown = false);\n            slider.addEventListener('mouseup', () => isDown = false);\n            slider.addEventListener('mousemove', (e) => {\n                if (!isDown) return; e.preventDefault();\n                const x = e.pageX - slider.offsetLeft; slider.scrollLeft = scrollLeft - (x - startX);\n            });\n        }\n\n        function fetchLiveStatus() {\n            // 共有されたライブ情報APIがあればここで取得処理を追加可能\n        }\n    </script>\n</body>\n</html>"
-}
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>朔栖まよ🍼🎷曲検索</title>
+    <style>
+        /* 全体デザイン */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            scrollbar-gutter: stable;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+        }
+
+        h1 {
+            color: #4a5568;
+            text-align: center;
+            padding-top: 20px;
+            margin-bottom: 20px;
+            font-size: 2.2em;
+            position: relative;
+        }
+
+        .icon-links {
+            position: absolute;
+            top: 0;
+            right: 0;
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .yt-icon { width: 36px; height: 36px; fill: #FF0000; }
+        .sheets-icon { width: 36px; height: 36px; fill: #0F9D58; }
+
+        .tabs {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        .tab-btn {
+            padding: 12px 24px;
+            font-size: 16px;
+            font-weight: 600;
+            color: #718096;
+            background: none;
+            border: none;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s ease;
+            margin-bottom: -2px;
+        }
+
+        .tab-btn.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .search-box {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            margin-bottom: 20px;
+            border: 1px solid #e2e8f0;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 14px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 16px;
+            outline: none;
+        }
+
+        .result-item {
+            background: white;
+            padding: 15px;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            margin-bottom: 12px;
+        }
+
+        .song-title { font-weight: bold; font-size: 18px; }
+        .song-artist { color: #718096; }
+
+        .loading-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(118, 75, 162, 0.95);
+            display: flex; flex-direction: column;
+            justify-content: center; align-items: center;
+            z-index: 9999;
+        }
+
+        .loading-spinner {
+            width: 50px; height: 50px;
+            border: 4px solid rgba(255,255,255,0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-spinner"></div>
+        <div class="loading-text" style="color:white; margin-top:15px;">データを読み込んでいます...</div>
+    </div>
+
+    <div class="container">
+        <h1>
+            朔栖まよ🍼🎷曲検索
+            <div class="icon-links">
+                <a href="https://www.youtube.com/@asaxmayo" target="_blank">
+                    <svg class="yt-icon" viewBox="0 0 24 24"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+                </a>
+            </div>
+        </h1>
+
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('search')">検索</button>
+            <button class="tab-btn" onclick="switchTab('list')">一覧</button>
+        </div>
+
+        <div id="search-tab" class="tab-content active">
+            <div class="search-box">
+                <input type="text" id="searchQuery" placeholder="曲名、アーティストを入力">
+            </div>
+            <div id="searchResults"></div>
+        </div>
+
+        <div id="list-tab" class="tab-content">
+            <table style="width:100%; border-collapse: collapse;">
+                <tbody id="songListBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // ★ここにGASのURLを貼る
+        const GAS_URL = 'https://script.google.com/macros/s/AKfycbxnVv_hHhp0cPd09qcKwRJDGDYgZvKy9MRi9vUN8d5GFT5J_sH0RdNEtSeaYDXZ19ozMw/exec';
+
+        let allSongs = [];
+
+        window.onload = async () => {
+            try {
+                const res = await fetch(GAS_URL);
+                allSongs = await res.json();
+                document.getElementById('loadingOverlay').classList.add('hidden');
+                document.getElementById('searchQuery').addEventListener('input', performSearch);
+            } catch (e) {
+                console.error(e);
+            }
+        };
+
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.getElementById(tab + '-tab').classList.add('active');
+        }
+
+        function performSearch() {
+            const query = document.getElementById('searchQuery').value.toLowerCase();
+            const container = document.getElementById('searchResults');
+            container.textContent = '';
+
+            const filtered = allSongs.filter(s => 
+                (s['曲名'] || '').toLowerCase().includes(query) ||
+                (s['アーティスト'] || '').toLowerCase().includes(query)
+            );
+
+            filtered.slice(0, 50).forEach(song => {
+                const item = document.createElement('div');
+                item.className = 'result-item';
+                
+                const t = document.createElement('div');
+                t.className = 'song-title';
+                t.textContent = song['曲名'];
+
+                const a = document.createElement('div');
+                a.className = 'song-artist';
+                a.textContent = song['アーティスト'];
+
+                item.appendChild(t);
+                item.appendChild(a);
+                container.appendChild(item);
+            });
+        }
+    </script>
+</body>
+</html>
