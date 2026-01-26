@@ -15,8 +15,10 @@ window.onload = async () => {
     const searchInput = document.getElementById('searchQuery');
     const clearBtn = document.getElementById('clearSearch');
 
-    // 検索窓クリア機能
-    clearBtn.onclick = () => { searchInput.value = ''; performSearch(); };
+    clearBtn.onclick = () => { 
+        searchInput.value = ''; 
+        performSearch(); 
+    };
 
     try {
         const res = await fetch(GAS_URL);
@@ -36,11 +38,18 @@ function performSearch() {
     const clearBtn = document.getElementById('clearSearch');
     const type = document.querySelector('input[name="stype"]:checked').value;
     const container = document.getElementById('searchResults');
+    const headerYtLink = document.getElementById('headerYtLink');
+    const liveBadge = document.getElementById('liveBadge');
 
-    // クリアボタン表示制御
     if (query) clearBtn.classList.add('show'); else clearBtn.classList.remove('show');
 
-    if (!query) { container.innerHTML = ''; document.getElementById('resultCountInline').innerText = ''; return; }
+    if (!query) { 
+        container.innerHTML = ''; 
+        document.getElementById('resultCountInline').innerText = '';
+        headerYtLink.href = 'https://www.youtube.com/@asaxmayo';
+        liveBadge.classList.remove('active');
+        return; 
+    }
 
     const filtered = allSongs.filter(s => {
         const fields = {
@@ -53,24 +62,28 @@ function performSearch() {
     });
 
     document.getElementById('resultCountInline').innerText = filtered.length + '件';
+
+    // ヘッダーアイコン連動
+    const firstWithYt = filtered.find(s => s['YouTube']);
+    if (firstWithYt) {
+        headerYtLink.href = `https://www.youtube.com/live/${firstWithYt['YouTube']}`;
+        liveBadge.classList.add('active');
+    } else {
+        headerYtLink.href = 'https://www.youtube.com/@asaxmayo';
+        liveBadge.classList.remove('active');
+    }
     
-    container.innerHTML = filtered.map(s => {
-        // YouTubeの条件分岐（IDがあればライブリンク、なければチャンネルへ）
-        const ytLink = s['YouTube'] ? `https://www.youtube.com/live/${s['YouTube']}` : 'https://www.youtube.com/@asaxmayo';
-        
-        return `
-            <div class="result-item">
-                <div class="song-title">${s['曲名']}<span class="ruby">${s['曲名の読み'] || ''}</span></div>
-                <div class="song-artist">${s['アーティスト']}<span class="ruby">${s['アーティストの読み'] || ''}</span></div>
-                ${s['タイアップ'] ? `<div class="song-tieup">${s['タイアップ']}</div>` : ''}
-                <div class="song-meta">
-                    <span>演奏回数: ${s['演奏回数'] || 0}回</span>
-                    <span>最終演奏: ${formatDate(s['最終演奏'])}</span>
-                    <a href="${ytLink}" target="_blank" class="yt-live-tag">🔴 YouTube Live</a>
-                </div>
-                <button class="copy-btn" onclick="copyText('${(s['曲名']||'').replace(/'/g,"\\'")} / ${(s['アーティスト']||'').replace(/'/g,"\\'")}')">コピー</button>
-            </div>`;
-    }).join('');
+    container.innerHTML = filtered.map(s => `
+        <div class="result-item">
+            <div class="song-title">${s['曲名']}<span class="ruby">${s['曲名の読み'] || ''}</span></div>
+            <div class="song-artist">${s['アーティスト']}<span class="ruby">${s['アーティストの読み'] || ''}</span></div>
+            ${s['タイアップ'] ? `<div class="song-tieup">${s['タイアップ']}</div>` : ''}
+            <div class="song-meta">
+                <span>演奏回数: ${s['演奏回数'] || 0}回</span>
+                <span>最終演奏: ${formatDate(s['最終演奏'])}</span>
+            </div>
+            <button class="copy-btn" onclick="copyText('${(s['曲名']||'').replace(/'/g,"\\'")} / ${(s['アーティスト']||'').replace(/'/g,"\\'")}')">コピー</button>
+        </div>`).join('');
 }
 
 function renderTable() {
