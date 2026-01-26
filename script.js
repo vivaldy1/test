@@ -3,7 +3,6 @@ let allSongs = [];
 let sortKey = '最終演奏';
 let sortAsc = false;
 
-// タブ切り替え
 window.switchTab = (t) => {
     document.querySelectorAll('.tab-btn, .tab-content').forEach(el => el.classList.remove('active'));
     document.getElementById('tab-btn-' + t)?.classList.add('active');
@@ -16,10 +15,8 @@ window.onload = async () => {
     try {
         const res = await fetch(GAS_URL);
         allSongs = await res.json();
-        
         document.getElementById('searchQuery')?.addEventListener('input', performSearch);
         document.querySelectorAll('input[name="stype"]').forEach(r => r.addEventListener('change', performSearch));
-        
         renderTable();
         if (loader) loader.classList.add('hidden');
     } catch (e) { console.error(e); }
@@ -34,10 +31,11 @@ function renderTable() {
         return sortAsc ? (v1 > v2 ? 1 : -1) : (v1 < v2 ? 1 : -1);
     });
 
+    // 一覧のふりがなは削除
     tbody.innerHTML = sorted.map(s => `
         <tr>
-            <td>${s['曲名']}<br><span class="table-ruby">${s['曲名の読み'] || ''}</span></td>
-            <td>${s['アーティスト']}<br><span class="table-ruby">${s['アーティストの読み'] || ''}</span></td>
+            <td>${s['曲名']}</td>
+            <td>${s['アーティスト']}</td>
             <td>${s['演奏回数'] || 0}</td>
             <td>${formatDate(s['最終演奏'])}</td>
         </tr>
@@ -68,15 +66,13 @@ function performSearch() {
             <div class="result-item">
                 <div class="song-title">${s['曲名']}<span class="ruby">${s['曲名の読み'] || ''}</span></div>
                 <div class="song-artist">${s['アーティスト']}<span class="ruby">${s['アーティストの読み'] || ''}</span></div>
-                ${s['タイアップ'] ? `<div class="song-tieup">📺 ${s['タイアップ']}</div>` : ''}
+                ${s['タイアップ'] ? `<div class="song-tieup">${s['タイアップ']}</div>` : ''}
                 <div class="song-meta">
                     <span>演奏回数: ${s['演奏回数'] || 0}回</span>
                     <span>最終演奏: ${formatDate(s['最終演奏'])}</span>
                 </div>
-                <div class="item-actions">
-                    <button class="copy-btn" onclick="copyText('${(s['曲名']||'').replace(/'/g,"\\'")} / ${(s['アーティスト']||'').replace(/'/g,"\\'")}')">コピー</button>
-                    ${ytLink ? `<a href="${ytLink}" target="_blank" class="yt-link-btn">▶ YouTube Live</a>` : ''}
-                </div>
+                <button class="copy-btn" onclick="copyText('${(s['曲名']||'').replace(/'/g,"\\'")} / ${(s['アーティスト']||'').replace(/'/g,"\\'")}')">コピー</button>
+                ${ytLink ? `<a href="${ytLink}" target="_blank" class="yt-live-btn">🔴 LIVE</a>` : ''}
             </div>`;
     }).join('');
 }
