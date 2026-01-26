@@ -190,6 +190,7 @@ input[type="text"]:focus {
     -webkit-overflow-scrolling: touch;
     scrollbar-width: thin;
     position: relative;
+    margin-top: 20px;
 }
 .radio-label {
     display: flex;
