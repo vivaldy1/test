@@ -31,11 +31,10 @@ function renderTable() {
         return sortAsc ? (v1 > v2 ? 1 : -1) : (v1 < v2 ? 1 : -1);
     });
 
-    // 一覧のふりがなは削除
     tbody.innerHTML = sorted.map(s => `
         <tr>
-            <td>${s['曲名']}</td>
-            <td>${s['アーティスト']}</td>
+            <td>${s['曲名'] || '-'}</td>
+            <td>${s['アーティスト'] || '-'}</td>
             <td>${s['演奏回数'] || 0}</td>
             <td>${formatDate(s['最終演奏'])}</td>
         </tr>
@@ -46,7 +45,7 @@ function performSearch() {
     const query = document.getElementById('searchQuery').value.trim().toLowerCase();
     const type = document.querySelector('input[name="stype"]:checked').value;
     const container = document.getElementById('searchResults');
-    if (!query) { container.innerHTML = ''; return; }
+    if (!query) { container.innerHTML = ''; document.getElementById('resultCountInline').innerText = ''; return; }
 
     const filtered = allSongs.filter(s => {
         const fields = {
@@ -72,7 +71,7 @@ function performSearch() {
                     <span>最終演奏: ${formatDate(s['最終演奏'])}</span>
                 </div>
                 <button class="copy-btn" onclick="copyText('${(s['曲名']||'').replace(/'/g,"\\'")} / ${(s['アーティスト']||'').replace(/'/g,"\\'")}')">コピー</button>
-                ${ytLink ? `<a href="${ytLink}" target="_blank" class="yt-live-btn">🔴 LIVE</a>` : ''}
+                ${ytLink ? `<a href="${ytLink}" target="_blank" class="yt-live-link">🔴 YouTube Live</a>` : ''}
             </div>`;
     }).join('');
 }
@@ -92,7 +91,10 @@ window.handleSort = (key) => {
 window.copyText = (txt) => {
     navigator.clipboard.writeText(txt).then(() => {
         const t = document.getElementById('copyToast');
-        if (t) { t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2000); }
+        if (t) { 
+            t.classList.add('show'); 
+            setTimeout(() => t.classList.remove('show'), 2000); 
+        }
     });
 };
 
