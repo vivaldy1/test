@@ -6,6 +6,12 @@ let allSongs = [];
 let sortKey = '最終演奏';
 let sortAsc = false;
 
+function highlight(text, q){
+    if(!q) return text;
+    const r = new RegExp(`(${q})`,'gi');
+    return text.replace(r,'<span class="highlight">$1</span>');
+}
+
 // 2. タブ切り替え
 window.switchTab = (t) => {
     document.querySelectorAll('.tab-btn, .tab-content').forEach(el => el.classList.remove('active'));
