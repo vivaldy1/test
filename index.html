@@ -614,6 +614,15 @@
                 return; 
             }
 
+            // escapeRegexと同じロジックで検索パターンを作成
+            const pattern = escapeRegex(query);
+            let searchRegex;
+            try {
+                searchRegex = new RegExp(pattern, 'i');
+            } catch (e) {
+                searchRegex = null;
+            }
+
             const filtered = allSongs.filter(s => {
                 const fields = {
                     song: [s['曲名'], s['曲名の読み']],
@@ -622,7 +631,9 @@
                     all: [s['曲名'], s['曲名の読み'], s['アーティスト'], s['アーティストの読み'], s['タイアップ']]
                 };
                 const targets = fields[type] || fields['all'];
-                return targets.some(f => String(f || '').toLowerCase().includes(query));
+                
+                if (!searchRegex) return false;
+                return targets.some(f => searchRegex.test(String(f || '').toLowerCase()));
             });
 
             if (countDisplay) countDisplay.innerText = filtered.length + '件';
