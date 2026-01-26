@@ -26,6 +26,12 @@
             padding: 30px;
             box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
         }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #4a5568;
+        }
         h1 {
             color: #4a5568;
             text-align: center;
@@ -475,6 +481,7 @@
         </div>
         <div id="search-tab" class="tab-content active">
             <div class="search-box">
+                <label for="searchQuery">検索キーワード</label>
                 <div class="search-input-wrapper">
                     <input type="text" id="searchQuery" placeholder="曲名、アーティスト名で検索...">
                     <span id="clearSearch" class="clear-btn">×</span>
