@@ -10,6 +10,13 @@
     position:relative;
     display:inline-flex;
 }
+.live-badge{
+    display:none;
+}
+
+.live-badge.active{
+    display:block;
+}
 
     body {
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
