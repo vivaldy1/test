@@ -533,6 +533,181 @@
             document.getElementById(t + '-tab')?.classList.add('active');
         };
 
+        function escapeRegex(string) {
+            return string.replace(/[*|[\]\\]/g, '\\        window.onload = async () => {
+            const loader = document.getElementById('loadingOverlay');
+            const searchInput = document.getElementById('searchQuery');
+            const clearBtn = document.getElementById('clearSearch');
+
+            if (clearBtn) {
+                clearBtn.onclick = () => { 
+                    searchInput.value = ''; 
+                    performSearch(); 
+                };
+            }
+
+            try {
+                const res = await fetch(GAS_URL);
+                allSongs = await res.json();
+                
+                searchInput?.addEventListener('input', performSearch);
+                document.querySelectorAll('input[name="stype"]').forEach(r => {
+                    r.addEventListener('change', performSearch);
+                });
+                
+                renderTable();
+                if (loader) loader.classList.add('hidden');
+            } catch (e) {
+                console.error("Data Load Error:", e);
+                if (loader) {
+                    const text = loader.querySelector('.loading-text');
+                    if (text) text.innerText = "データの読み込みに失敗しました。";
+                }
+            }
+        };').replace(/./g, '\\s*        window.onload = async () => {
+            const loader = document.getElementById('loadingOverlay');
+            const searchInput = document.getElementById('searchQuery');
+            const clearBtn = document.getElementById('clearSearch');
+
+            if (clearBtn) {
+                clearBtn.onclick = () => { 
+                    searchInput.value = ''; 
+                    performSearch(); 
+                };
+            }
+
+            try {
+                const res = await fetch(GAS_URL);
+                allSongs = await res.json();
+                
+                searchInput?.addEventListener('input', performSearch);
+                document.querySelectorAll('input[name="stype"]').forEach(r => {
+                    r.addEventListener('change', performSearch);
+                });
+                
+                renderTable();
+                if (loader) loader.classList.add('hidden');
+            } catch (e) {
+                console.error("Data Load Error:", e);
+                if (loader) {
+                    const text = loader.querySelector('.loading-text');
+                    if (text) text.innerText = "データの読み込みに失敗しました。";
+                }
+            }
+        };').replace(/[.+?^${}()]/g, '\\        window.onload = async () => {
+            const loader = document.getElementById('loadingOverlay');
+            const searchInput = document.getElementById('searchQuery');
+            const clearBtn = document.getElementById('clearSearch');
+
+            if (clearBtn) {
+                clearBtn.onclick = () => { 
+                    searchInput.value = ''; 
+                    performSearch(); 
+                };
+            }
+
+            try {
+                const res = await fetch(GAS_URL);
+                allSongs = await res.json();
+                
+                searchInput?.addEventListener('input', performSearch);
+                document.querySelectorAll('input[name="stype"]').forEach(r => {
+                    r.addEventListener('change', performSearch);
+                });
+                
+                renderTable();
+                if (loader) loader.classList.add('hidden');
+            } catch (e) {
+                console.error("Data Load Error:", e);
+                if (loader) {
+                    const text = loader.querySelector('.loading-text');
+                    if (text) text.innerText = "データの読み込みに失敗しました。";
+                }
+            }
+        };');
+        }
+
+        function highlightText(text, query) {
+            if (!text || !query) return escapeHtml(text || '');
+            const escaped = escapeHtml(text);
+            const pattern = escapeRegex(query);
+            try {
+                const regex = new RegExp(pattern, 'gi');
+                return escaped.replace(regex, '<span class="highlight">        window.onload = async () => {
+            const loader = document.getElementById('loadingOverlay');
+            const searchInput = document.getElementById('searchQuery');
+            const clearBtn = document.getElementById('clearSearch');
+
+            if (clearBtn) {
+                clearBtn.onclick = () => { 
+                    searchInput.value = ''; 
+                    performSearch(); 
+                };
+            }
+
+            try {
+                const res = await fetch(GAS_URL);
+                allSongs = await res.json();
+                
+                searchInput?.addEventListener('input', performSearch);
+                document.querySelectorAll('input[name="stype"]').forEach(r => {
+                    r.addEventListener('change', performSearch);
+                });
+                
+                renderTable();
+                if (loader) loader.classList.add('hidden');
+            } catch (e) {
+                console.error("Data Load Error:", e);
+                if (loader) {
+                    const text = loader.querySelector('.loading-text');
+                    if (text) text.innerText = "データの読み込みに失敗しました。";
+                }
+            }
+        };</span>');
+            } catch (e) {
+                return escaped;
+            }
+        }
+
+        function escapeQuotes(str) {
+            return str.replace(/'/g, "\\'");
+        }
+
+        function createResultItem(song, query) {
+            const date = song['最終演奏'] ? formatDate(song['最終演奏']) : '-';
+            const count = song['演奏回数'] || 0;
+            const title = song['曲名'] || '不明';
+            const artist = song['アーティスト'] || '不明';
+            const titleYomi = song['曲名の読み'] || '';
+            const artistYomi = song['アーティストの読み'] || '';
+            const tieup = song['タイアップ'] || '';
+            
+            const hTitle = highlightText(title, query);
+            const hArtist = highlightText(artist, query);
+            const hTitleYomi = highlightText(titleYomi, query);
+            const hArtistYomi = highlightText(artistYomi, query);
+            const hTieup = highlightText(tieup, query);
+            
+            const copyText = title + '／' + artist;
+            
+            let yomiDisplay = (titleYomi || artistYomi) ? `<div class="song-yomi">${hTitleYomi}${artistYomi ? ' / ' + hArtistYomi : ''}</div>` : '';
+            let tieupDisplay = tieup ? `<div class="song-tieup"><div class="tv-icon-20"></div><span>${hTieup}</span></div>` : '';
+            
+            return `
+                <div class="result-item">
+                    <div class="song-title">${hTitle}</div>
+                    <div class="song-artist">${hArtist}</div>
+                    ${yomiDisplay}
+                    ${tieupDisplay}
+                    <div class="song-meta">
+                      <span>演奏回数: ${count}回</span>
+                      <span>最終演奏: ${date}</span>
+                    </div>
+                    <button class="copy-btn" onclick="copyToClipboard('${escapeQuotes(copyText)}')">コピー</button>
+                </div>
+              `;
+        }
+
         window.onload = async () => {
             const loader = document.getElementById('loadingOverlay');
             const searchInput = document.getElementById('searchQuery');
