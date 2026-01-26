@@ -1,4 +1,4 @@
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbxnVv_hHhp0cPd09qcKwRJDGDYgZvKy9MRi9vUN8d5GFT5J_sH0RdNEtSeaYDXZ19ozMw/exec';
+const GAS_URL = 'https://script.google.com/macros/s/AKfycby4dEto3Abr_bmC7nCMBjALGkxut24WTWtDoODMUWXWvx4W7TTNTqXCGQhxRT5QV8qqeA/exec';
 let allSongs = [];
 let sortKey = '最終演奏';
 let sortAsc = false;
