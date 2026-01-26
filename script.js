@@ -12,39 +12,34 @@ window.switchTab = (t) => {
 window.onload = async () => {
     initDragScroll();
     const loader = document.getElementById('loadingOverlay');
+    const searchInput = document.getElementById('searchQuery');
+    const clearBtn = document.getElementById('clearSearch');
+
+    // 検索窓クリア機能
+    clearBtn.onclick = () => { searchInput.value = ''; performSearch(); };
+
     try {
         const res = await fetch(GAS_URL);
         allSongs = await res.json();
-        document.getElementById('searchQuery')?.addEventListener('input', performSearch);
+        
+        searchInput?.addEventListener('input', performSearch);
         document.querySelectorAll('input[name="stype"]').forEach(r => r.addEventListener('change', performSearch));
+        
         renderTable();
         if (loader) loader.classList.add('hidden');
     } catch (e) { console.error(e); }
 };
 
-function renderTable() {
-    const tbody = document.getElementById('songListBody');
-    if (!tbody) return;
-    const sorted = [...allSongs].sort((a, b) => {
-        let v1 = a[sortKey] || '', v2 = b[sortKey] || '';
-        if (sortKey === '演奏回数') { v1 = Number(v1) || 0; v2 = Number(v2) || 0; }
-        return sortAsc ? (v1 > v2 ? 1 : -1) : (v1 < v2 ? 1 : -1);
-    });
-
-    tbody.innerHTML = sorted.map(s => `
-        <tr>
-            <td>${s['曲名'] || '-'}</td>
-            <td>${s['アーティスト'] || '-'}</td>
-            <td>${s['演奏回数'] || 0}</td>
-            <td>${formatDate(s['最終演奏'])}</td>
-        </tr>
-    `).join('');
-}
-
 function performSearch() {
-    const query = document.getElementById('searchQuery').value.trim().toLowerCase();
+    const input = document.getElementById('searchQuery');
+    const query = input.value.trim().toLowerCase();
+    const clearBtn = document.getElementById('clearSearch');
     const type = document.querySelector('input[name="stype"]:checked').value;
     const container = document.getElementById('searchResults');
+
+    // クリアボタン表示制御
+    if (query) clearBtn.classList.add('show'); else clearBtn.classList.remove('show');
+
     if (!query) { container.innerHTML = ''; document.getElementById('resultCountInline').innerText = ''; return; }
 
     const filtered = allSongs.filter(s => {
@@ -60,8 +55,9 @@ function performSearch() {
     document.getElementById('resultCountInline').innerText = filtered.length + '件';
     
     container.innerHTML = filtered.map(s => {
-        // YouTubeのVIDEO_IDがある場合のみライブリンクを表示
-        const ytLink = s['YouTube'] ? `https://www.youtube.com/live/${s['YouTube']}` : '';
+        // YouTubeの条件分岐（IDがあればライブリンク、なければチャンネルへ）
+        const ytLink = s['YouTube'] ? `https://www.youtube.com/live/${s['YouTube']}` : 'https://www.youtube.com/@asaxmayo';
+        
         return `
             <div class="result-item">
                 <div class="song-title">${s['曲名']}<span class="ruby">${s['曲名の読み'] || ''}</span></div>
@@ -70,11 +66,22 @@ function performSearch() {
                 <div class="song-meta">
                     <span>演奏回数: ${s['演奏回数'] || 0}回</span>
                     <span>最終演奏: ${formatDate(s['最終演奏'])}</span>
-                    ${ytLink ? `<a href="${ytLink}" target="_blank" class="yt-live-tag">🔴 LIVE</a>` : ''}
+                    <a href="${ytLink}" target="_blank" class="yt-live-tag">🔴 YouTube Live</a>
                 </div>
                 <button class="copy-btn" onclick="copyText('${(s['曲名']||'').replace(/'/g,"\\'")} / ${(s['アーティスト']||'').replace(/'/g,"\\'")}')">コピー</button>
             </div>`;
     }).join('');
+}
+
+function renderTable() {
+    const tbody = document.getElementById('songListBody');
+    if (!tbody) return;
+    const sorted = [...allSongs].sort((a, b) => {
+        let v1 = a[sortKey] || '', v2 = b[sortKey] || '';
+        if (sortKey === '演奏回数') { v1 = Number(v1) || 0; v2 = Number(v2) || 0; }
+        return sortAsc ? (v1 > v2 ? 1 : -1) : (v1 < v2 ? 1 : -1);
+    });
+    tbody.innerHTML = sorted.map(s => `<tr><td>${s['曲名']||'-'}</td><td>${s['アーティスト']||'-'}</td><td>${s['演奏回数']||0}</td><td>${formatDate(s['最終演奏'])}</td></tr>`).join('');
 }
 
 function formatDate(dateStr) {
@@ -92,10 +99,7 @@ window.handleSort = (key) => {
 window.copyText = (txt) => {
     navigator.clipboard.writeText(txt).then(() => {
         const t = document.getElementById('copyToast');
-        if (t) { 
-            t.classList.add('show'); 
-            setTimeout(() => t.classList.remove('show'), 2000); 
-        }
+        if (t) { t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2000); }
     });
 };
 
