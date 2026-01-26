@@ -1,27 +1,49 @@
-/* 前述の基本設定は維持 */
-.song-tieup { color: #a0aec0; font-size: 0.85em; margin-top: 5px; } /* 灰色に変更 */
-.result-item { padding-right: 20px; } /* ボタン配置のため右余白調整 */
+* { margin: 0; padding: 0; box-sizing: border-box; scrollbar-gutter: stable; }
+body { font-family: 'Segoe UI', sans-serif; background: linear-gradient(135deg, #764ba2 0%, #667eea 100%); min-height: 100vh; padding: 20px; color: #333; }
+.container { max-width: 900px; margin: 0 auto; background: rgba(255, 255, 255, 0.95); border-radius: 20px; padding: 30px; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2); }
+h1 { color: #4a5568; text-align: center; padding-top: 20px; margin-bottom: 20px; font-size: 2.2em; position: relative; }
 
-.item-actions { display: flex; gap: 10px; margin-top: 10px; }
-.yt-link-btn { 
-    display: inline-block;
-    padding: 8px 15px;
-    background: #FF0000;
-    color: white;
-    text-decoration: none;
-    border-radius: 8px;
-    font-size: 14px;
-    font-weight: bold;
-}
-.yt-link-btn:hover { background: #cc0000; }
+/* YouTubeロゴのバグ修正 */
+.icon-links { position: absolute; top: 0; right: 0; display: flex; gap: 12px; }
+.yt-icon { width: 36px; height: 36px; fill: #FF0000; display: block; }
 
-.copy-btn { 
-    position: static; transform: none; /* 位置を固定から解除 */
-    padding: 8px 15px; cursor: pointer; border-radius: 8px; border: 1px solid #cbd5e0; background: #f7fafc; 
-}
+.tabs { display: flex; justify-content: center; margin-bottom: 30px; border-bottom: 2px solid #e2e8f0; }
+.tab-btn { padding: 12px 24px; font-weight: 600; color: #718096; background: none; border: none; cursor: pointer; border-bottom: 3px solid transparent; transition: 0.3s; margin-bottom: -2px; }
+.tab-btn.active { color: #667eea; border-bottom-color: #667eea; }
+.tab-content { display: none; }
+.tab-content.active { display: block; animation: fadeIn 0.3s; }
 
-/* 読み仮名用スタイル */
-small { display: inline-block; margin-left: 5px; }
+.search-box { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05); margin-bottom: 20px; border: 1px solid #e2e8f0; }
+input[type="text"] { width: 100%; padding: 14px; padding-right: 90px; border: 2px solid #e2e8f0; border-radius: 10px; font-size: 16px; outline: none; }
+.result-count-inline { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); color: #667eea; font-weight: bold; }
 
-/* 必須：これがないと消えません */
+.search-type { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 10px; margin-top: 15px; cursor: grab; user-select: none; }
+.radio-label { display: flex; align-items: center; cursor: pointer; padding: 8px 16px; border: 2px solid #e2e8f0; border-radius: 20px; font-size: 14px; white-space: nowrap; }
+.radio-label:has(input:checked) { border-color: #667eea; background: #ebf4ff; color: #667eea; font-weight: bold; }
+
+.result-item { background: white; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px; margin-bottom: 15px; position: relative; border-left: 5px solid #667eea; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+.song-title { font-size: 1.2em; font-weight: bold; color: #2d3748; }
+.ruby { font-weight: normal; color: #a0aec0; font-size: 0.7em; margin-left: 8px; }
+.song-artist { color: #4a5568; font-size: 0.95em; margin-top: 4px; }
+.song-tieup { color: #a0aec0; font-size: 0.85em; margin-top: 5px; } /* タイアップは灰色 */
+.song-meta { display: flex; gap: 20px; color: #a0aec0; font-size: 0.8em; margin-top: 8px; }
+
+.item-actions { display: flex; gap: 10px; margin-top: 12px; }
+.yt-link-btn { display: flex; align-items: center; gap: 5px; padding: 8px 15px; background: #FF0000; color: white; text-decoration: none; border-radius: 8px; font-size: 13px; font-weight: bold; }
+.copy-btn { padding: 8px 15px; cursor: pointer; border-radius: 8px; border: 1px solid #cbd5e0; background: #f7fafc; }
+
+.table-container { overflow-x: auto; border-radius: 10px; border: 1px solid #e2e8f0; }
+table { width: 100%; border-collapse: collapse; min-width: 600px; background: white; }
+th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #e2e8f0; }
+th { background: #f7fafc; cursor: pointer; }
+.table-ruby { color: #a0aec0; font-size: 0.8em; }
+
+.loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(118, 75, 162, 0.98); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 9999; }
+.loading-spinner { width: 60px; height: 60px; border: 5px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 1s linear infinite; }
+.loading-text { color: white; margin-top: 20px; font-weight: bold; font-size: 1.2em; }
 .hidden { display: none !important; }
+.copy-toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: #2d3748; color: white; padding: 12px 24px; border-radius: 50px; opacity: 0; transition: 0.3s; z-index: 1000; }
+.copy-toast.show { opacity: 1; }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
