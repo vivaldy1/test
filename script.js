@@ -7,12 +7,17 @@ window.onload = async () => {
     initDragScroll();
     try {
         const res = await fetch(GAS_URL);
-        allSongs = await res.json();
+        allSongs = await res.json(); // すでにGAS側で軽量化済み
+
         document.getElementById('loadingOverlay').classList.add('hidden');
         document.getElementById('searchQuery').addEventListener('input', performSearch);
         document.querySelectorAll('input[name="stype"]').forEach(r => r.addEventListener('change', performSearch));
+        
         renderTable();
-    } catch (e) { console.error(e); }
+    } catch (e) {
+        console.error(e);
+        document.querySelector('.loading-text').innerText = 'エラーが発生しました。';
+    }
 };
 
 function switchTab(t) {
@@ -21,9 +26,8 @@ function switchTab(t) {
     document.getElementById(t + '-tab').classList.add('active');
 }
 
-// ハイライト処理用関数
 function highlightText(text, query) {
-    if (!query) return text;
+    if (!query || !text) return text || '';
     const regex = new RegExp(`(${query})`, 'gi');
     return String(text).replace(regex, '<span class="highlight">$1</span>');
 }
@@ -52,12 +56,15 @@ function performSearch() {
 
     document.getElementById('resultCountInline').innerText = filtered.length + '件';
     
-    container.innerHTML = filtered.slice(0, 50).map(s => `
+    container.innerHTML = filtered.map(s => `
         <div class="result-item">
             <div class="song-title">${highlightText(s['曲名'], query)}</div>
             <div class="song-artist">${highlightText(s['アーティスト'], query)}</div>
             ${s['タイアップ'] ? `<div class="song-tieup">📺 ${highlightText(s['タイアップ'], query)}</div>` : ''}
-            <div class="song-meta">演奏回数: ${s['演奏回数'] || 0}回 / 最終演奏: ${s['最終演奏'] || '-'}</div>
+            <div class="song-meta">
+                <span>演奏回数: ${s['演奏回数'] || 0}回</span>
+                <span>最終演奏: ${formatDate(s['最終演奏'])}</span>
+            </div>
             <button class="copy-btn" onclick="copyText('${s['曲名']} / ${s['アーティスト']}')">コピー</button>
         </div>
     `).join('');
@@ -77,15 +84,23 @@ function renderTable() {
         return sortAsc ? (v1 > v2 ? 1 : -1) : (v1 < v2 ? 1 : -1);
     });
     
-    // 一覧バグ回避：全件表示するように修正
     tbody.innerHTML = sorted.map(s => `
         <tr>
             <td>${s['曲名'] || '-'}</td>
             <td>${s['アーティスト'] || '-'}</td>
             <td>${s['演奏回数'] || 0}</td>
-            <td>${s['最終演奏'] || '-'}</td>
+            <td>${formatDate(s['最終演奏'])}</td>
         </tr>
     `).join('');
+}
+
+function formatDate(dateStr) {
+    if (!dateStr || dateStr === '-') return '-';
+    try {
+        const d = new Date(dateStr);
+        if (isNaN(d.getTime())) return dateStr;
+        return `${d.getFullYear()}/${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getDate().toString().padStart(2, '0')}`;
+    } catch (e) { return dateStr; }
 }
 
 function copyText(txt) {
@@ -98,6 +113,7 @@ function copyText(txt) {
 
 function initDragScroll() {
     const s = document.getElementById('searchTypeGroup');
+    if(!s) return;
     let isDown = false, startX, scrollLeft;
     s.onmousedown = (e) => { isDown = true; s.style.cursor = 'grabbing'; startX = e.pageX - s.offsetLeft; scrollLeft = s.scrollLeft; };
     s.onmouseleave = s.onmouseup = () => { isDown = false; s.style.cursor = 'grab'; };
