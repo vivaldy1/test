@@ -114,10 +114,11 @@ function performSearch() {
         item.className = 'result-item';
         
         // 特殊文字をエスケープした安全なテキスト作成
-        const title = escapeHtml(s['曲名'] || '不明');
-        const titleYomi = escapeHtml(s['曲名の読み'] || '');
-        const artist = escapeHtml(s['アーティスト'] || '不明');
-        const artistYomi = escapeHtml(s['アーティストの読み'] || '');
+        const title = highlight(escapeHtml(s['曲名'] || '不明'), query);
+        const artist = highlight(escapeHtml(s['アーティスト'] || '不明'), query);
+        const titleYomi = highlight(escapeHtml(s['曲名の読み'] || ''), query);
+        const artistYomi = highlight(escapeHtml(s['アーティストの読み'] || ''), query);
+
         const tieup = s['タイアップ'] ? `<div class="song-tieup">${escapeHtml(s['タイアップ'])}</div>` : '';
         const count = s['演奏回数'] || 0;
         const date = formatDate(s['最終演奏']);
