@@ -248,11 +248,51 @@
             color: #a0aec0;
             margin-left: 4px;
         }
+        .song-yomi {
+            font-size: 11px;
+            color: #a0aec0;
+            margin-top: 6px;
+            line-height: 1.2;
+        }
         .song-tieup {
             color: #a0aec0;
             font-size: 13px;
-            margin-bottom: 6px;
+            margin-top: 6px;
             font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        /* テレビアイコン */
+        .tv-icon-20 {
+            position: relative;
+            width: 20px;
+            height: 16px;
+            background: #a0aec0;
+            border-radius: 2px;
+            display: inline-block;
+            box-sizing: border-box;
+            flex-shrink: 0;
+        }
+        .tv-icon-20::before {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 13px;
+            height: 11px;
+            background: #edf2f7;
+            border-radius: 1px;
+        }
+        .tv-icon-20::after {
+            content: '';
+            position: absolute;
+            right: 1.5px;
+            top: 3px;
+            width: 2px;
+            height: 2px;
+            background: #4a5568;
+            box-shadow: 0 4px 0 #4a5568, 0 8px 0 #4a5568;
         }
         .song-meta {
             display: flex;
@@ -567,41 +607,76 @@
                 liveBadge.classList.remove('active');
             }
 
-            container.innerHTML = '';
-            const fragment = document.createDocumentFragment();
-            
-            filtered.forEach(s => {
-                const item = document.createElement('div');
-                item.className = 'result-item';
-                
-                const title = highlightMatch(escapeHtml(s['曲名'] || '不明'), query);
-                const titleYomi = escapeHtml(s['曲名の読み'] || '');
-                const artist = highlightMatch(escapeHtml(s['アーティスト'] || '不明'), query);
-                const artistYomi = escapeHtml(s['アーティストの読み'] || '');
-                const tieup = s['タイアップ'] ? `<div class="song-tieup">${highlightMatch(escapeHtml(s['タイアップ']), query)}</div>` : '';
-                const count = s['演奏回数'] || 0;
-                const date = formatDate(s['最終演奏']);
-                
-                const copyVal = `${s['曲名'] || ''} / ${s['アーティスト'] || ''}`.replace(/'/g, "\\'");
-                item.innerHTML = `
-                    <div class="song-title">${title}<span class="ruby">${titleYomi}</span></div>
-                    <div class="song-artist">${artist}<span class="ruby">${artistYomi}</span></div>
-                    ${tieup}
-                    <div class="song-meta">
-                        <span>演奏回数: ${count}回</span>
-                        <span>最終演奏: ${date}</span>
-                    </div>
-                    <button class="copy-btn" onclick="copyText('${copyVal}')">コピー</button>
-                `;
-                fragment.appendChild(item);
-            });
-            container.appendChild(fragment);
+        function escapeQuotes(str) {
+            return str.replace(/'/g, "\\'");
         }
 
-        function highlightMatch(text, query) {
+        function createResultItem(song, query) {
+            const date = song['最終演奏'] ? formatDate(song['最終演奏']) : '-';
+            const count = song['演奏回数'] || 0;
+            const title = song['曲名'] || '不明';
+            const artist = song['アーティスト'] || '不明';
+            const titleYomi = song['曲名の読み'] || '';
+            const artistYomi = song['アーティストの読み'] || '';
+            const tieup = song['タイアップ'] || '';
+            
+            const hTitle = highlightText(title, query);
+            const hArtist = highlightText(artist, query);
+            const hTitleYomi = highlightText(titleYomi, query);
+            const hArtistYomi = highlightText(artistYomi, query);
+            const hTieup = highlightText(tieup, query);
+            
+            const copyText = title + '／' + artist;
+            
+            let yomiDisplay = (titleYomi || artistYomi) ? `<div class="song-yomi">${hTitleYomi}${artistYomi ? ' / ' + hArtistYomi : ''}</div>` : '';
+            let tieupDisplay = tieup ? `<div class="song-tieup"><div class="tv-icon-20"></div><span>${hTieup}</span></div>` : '';
+            
+            return `
+                <div class="result-item">
+                    <div class="song-title">${hTitle}</div>
+                    <div class="song-artist">${hArtist}</div>
+                    ${yomiDisplay}
+                    ${tieupDisplay}
+                    <div class="song-meta">
+                      <span>演奏回数: ${count}回</span>
+                      <span>最終演奏: ${date}</span>
+                    </div>
+                    <button class="copy-btn" onclick="copyToClipboard('${escapeQuotes(copyText)}')">コピー</button>
+                </div>
+              `;
+        }
+        }
+
+        function escapeRegex(string) {
+            return string.replace(/[*|[\]\\]/g, '\\        function highlightMatch(text, query) {
             if (!query) return text;
             const regex = new RegExp(`(${query})`, 'gi');
             return text.replace(regex, '<span class="highlight">$1</span>');
+        }').replace(/./g, '\\s*        function highlightMatch(text, query) {
+            if (!query) return text;
+            const regex = new RegExp(`(${query})`, 'gi');
+            return text.replace(regex, '<span class="highlight">$1</span>');
+        }').replace(/[.+?^${}()]/g, '\\        function highlightMatch(text, query) {
+            if (!query) return text;
+            const regex = new RegExp(`(${query})`, 'gi');
+            return text.replace(regex, '<span class="highlight">$1</span>');
+        }');
+        }
+
+        function highlightText(text, query) {
+            if (!text || !query) return escapeHtml(text || '');
+            const escaped = escapeHtml(text);
+            const pattern = escapeRegex(query);
+            try {
+                const regex = new RegExp(pattern, 'gi');
+                return escaped.replace(regex, '<span class="highlight">        function highlightMatch(text, query) {
+            if (!query) return text;
+            const regex = new RegExp(`(${query})`, 'gi');
+            return text.replace(regex, '<span class="highlight">$1</span>');
+        }</span>');
+            } catch (e) {
+                return escaped;
+            }
         }
 
         function renderTable() {
@@ -647,7 +722,7 @@
             renderTable();
         };
 
-        window.copyText = (txt) => {
+        window.copyToClipboard = (txt) => {
             navigator.clipboard.writeText(txt).then(() => {
                 const t = document.getElementById('copyToast');
                 if (t) { 
