@@ -536,6 +536,21 @@
         }
 
         function escapeRegex(string) {
+            return string.split('').map(char => {
+                if (/[*|[\]\\.+?^${}()]/g.test(char)) {
+                    return '\\' + char;
+                }
+                return char + '\\s*';
+            }).join('');
+        }
+
+        function highlightText(text, query) {
+            if (!text || !query) return escapeHtml(text || '');
+            const escaped = escapeHtml(text);
+            const pattern = escapeRegex(query);
+            try {
+                const regex = new RegExp(pattern, 'gi');
+                return escaped.replace(regex, '<span class="highlight">        function escapeRegex(string) {
             return string.replace(/[*|[\]\\]/g, '\\$&').replace(/./g, '\\s*$&').replace(/[.+?^${}()]/g, '\\$&');
         }
 
@@ -546,6 +561,10 @@
             try {
                 const regex = new RegExp(pattern, 'gi');
                 return escaped.replace(regex, '<span class="highlight">$&</span>');
+            } catch (e) {
+                return escaped;
+            }
+        }</span>');
             } catch (e) {
                 return escaped;
             }
@@ -606,6 +625,7 @@
             const headerYtLink = document.getElementById('headerYtLink');
             const liveBadge = document.getElementById('liveBadge');
             const countDisplay = document.getElementById('resultCountInline');
+            const MAX_DISPLAY = 50; // 最大表示件数
 
             if (query) clearBtn.classList.add('show'); else clearBtn.classList.remove('show');
 
@@ -640,9 +660,18 @@
             }
 
             container.innerHTML = '';
-            filtered.forEach(s => {
-                container.innerHTML += createResultItem(s, query);
-            });
+            const displayCount = Math.min(filtered.length, MAX_DISPLAY);
+            for (let i = 0; i < displayCount; i++) {
+                container.innerHTML += createResultItem(filtered[i], query);
+            }
+            
+            // 件数が多い場合は表示切断を通知
+            if (filtered.length > MAX_DISPLAY) {
+                const moreMsg = document.createElement('div');
+                moreMsg.style.cssText = 'text-align: center; padding: 20px; color: #718096; font-size: 14px;';
+                moreMsg.innerText = `... 他 ${filtered.length - MAX_DISPLAY} 件 ...`;
+                container.appendChild(moreMsg);
+            }
         }
 
         function renderTable() {
