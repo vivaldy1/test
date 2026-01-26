@@ -3,47 +3,47 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>朔栖まよ🍼🎷曲検索</title>
+    <title>Song List DB</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="loading-overlay" id="loadingOverlay">
+    <div id="loadingOverlay" class="loading-overlay">
         <div class="loading-spinner"></div>
-        <div class="loading-text">データを読み込んでいます(3)...</div>
+        <p class="loading-text">データを読み込んでいます...</p>
     </div>
 
     <div class="container">
         <h1>
             朔栖まよ🍼🎷曲検索
             <div class="icon-links">
-                <a href="https://www.youtube.com/@asaxmayo" target="_blank" class="icon-link">
-                    <svg class="yt-icon" viewBox="0 0 24 24"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+                <a href="https://www.youtube.com/@asaxmayo" target="_blank">
+                    <svg class="yt-icon" viewBox="0 0 24 24"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.377.505 9.377.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
                 </a>
-                <a href="https://docs.google.com/spreadsheets/d/1lPv2iDZbVeVTyvMNHXIZMUfDFd7rDrebFVKBckSMoF4/edit" target="_blank" class="icon-link">
-                    <svg class="sheets-icon" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-8 14H7v-4h4v4zm0-6H7V7h4v4zm6 6h-4v-4h4v4zm0-6h-4V7h4v4z"/></svg>
+                <a href="https://docs.google.com/spreadsheets/d/1X6k0B8h7T_7R9tW3r5n7X5_yW7K0B8h7T_7R9tW3r5n7X5_y/edit" target="_blank">
+                    <svg class="sheets-icon" viewBox="0 0 24 24"><path d="M14.5 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V7.5L14.5 2zM19 20H5V4h8v5h5v11zM7 11h10v2H7v-2zm0 4h10v2H7v-2z"/></svg>
                 </a>
             </div>
         </h1>
-
+        
         <div class="tabs">
-            <button id="tab-btn-search" class="tab-btn active" onclick="switchTab('search')">検索</button>
-            <button id="tab-btn-list" class="tab-btn" onclick="switchTab('list')">全曲一覧</button>
+            <button class="tab-btn active" id="tab-btn-search" onclick="switchTab('search')">検索</button>
+            <button class="tab-btn" id="tab-btn-list" onclick="switchTab('list')">一覧</button>
         </div>
 
         <div id="search-tab" class="tab-content active">
             <div class="search-box">
-                <div class="search-input-wrapper">
-                    <input type="text" id="searchQuery" placeholder="曲名、アーティスト、よみがな、タイアップを入力">
-                    <span class="result-count-inline" id="resultCountInline"></span>
+                <div style="position: relative;">
+                    <input type="text" id="searchQuery" placeholder="曲名、アーティスト名で検索...">
+                    <span id="resultCountInline" class="result-count-inline"></span>
                 </div>
                 <div class="search-type" id="searchTypeGroup">
-                    <label class="radio-label"><input type="radio" name="stype" value="all" checked>全て</label>
+                    <label class="radio-label"><input type="radio" name="stype" value="all" checked>すべて</label>
                     <label class="radio-label"><input type="radio" name="stype" value="song">曲名</label>
                     <label class="radio-label"><input type="radio" name="stype" value="artist">歌手</label>
                     <label class="radio-label"><input type="radio" name="stype" value="tieup">タイアップ</label>
                 </div>
             </div>
-            <div id="searchResults" class="results"></div>
+            <div id="searchResults"></div>
         </div>
 
         <div id="list-tab" class="tab-content">
@@ -51,10 +51,10 @@
                 <table>
                     <thead>
                         <tr>
-                            <th onclick="handleSort('曲名')">曲名 ↕</th>
-                            <th onclick="handleSort('アーティスト')">歌手 ↕</th>
-                            <th onclick="handleSort('演奏回数')">回数 ↕</th>
-                            <th onclick="handleSort('最終演奏')">最終演奏 ↕</th>
+                            <th onclick="handleSort('曲名')">曲名</th>
+                            <th onclick="handleSort('アーティスト')">アーティスト</th>
+                            <th onclick="handleSort('演奏回数')">回数</th>
+                            <th onclick="handleSort('最終演奏')">最終演奏</th>
                         </tr>
                     </thead>
                     <tbody id="songListBody"></tbody>
@@ -62,7 +62,7 @@
             </div>
         </div>
     </div>
-    <div class="copy-toast" id="copyToast">コピーしました！</div>
+    <div id="copyToast" class="copy-toast">コピーしました</div>
     <script src="script.js"></script>
 </body>
 </html>
