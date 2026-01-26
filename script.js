@@ -96,7 +96,7 @@ function performSearch() {
     if (countDisplay) countDisplay.innerText = filtered.length + '件';
 
     // ヘッダーアイコン連動 (YouTube IDがある最初の曲のリンクを貼る)
-    const firstWithYt = filtered.find(s => s['YouTube']);
+    const firstWithYt = filtered.find(s => s['YouTube'] && s['YouTube'].length > 5);
     if (firstWithYt) {
         headerYtLink.href = `https://www.youtube.com/live/${firstWithYt['YouTube']}`;
         liveBadge.classList.add('active');
