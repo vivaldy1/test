@@ -550,8 +550,18 @@
             const pattern = escapeRegex(query);
             try {
                 const regex = new RegExp(pattern, 'gi');
+                return escaped.replace(regex, '<span class="highlight">        function highlightText(text, query) {
+            if (!text || !query) return escapeHtml(text || '');
+            const escaped = escapeHtml(text);
+            const pattern = escapeRegex(query);
+            try {
+                const regex = new RegExp(pattern, 'gi');
                 return escaped.replace(regex, '<span class="highlight">        function escapeRegex(string) {
             return string.replace(/[*|[\]\\]/g, '\\$&').replace(/./g, '\\s*$&').replace(/[.+?^${}()]/g, '\\$&');
+        }</span>');
+            } catch (e) {
+                return escaped;
+            }
         }
 
         function highlightText(text, query) {
