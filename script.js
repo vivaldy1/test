@@ -5,62 +5,67 @@ let sortAsc = false;
 
 window.onload = async () => {
     initDragScroll();
-    const loadingText = document.querySelector('.loading-text');
+    const overlay = document.getElementById('loadingOverlay');
     
     try {
-        console.log("Fetching data from GAS...");
         const res = await fetch(GAS_URL);
+        if (!res.ok) throw new Error('Fetch failed');
+        allSongs = await res.json();
+
+        // 検索窓とラジオボタンのイベント登録
+        const qInput = document.getElementById('searchQuery');
+        if(qInput) qInput.addEventListener('input', performSearch);
         
-        if (!res.ok) {
-            throw new Error(`HTTPエラー! ステータス: ${res.status}`);
+        document.querySelectorAll('input[name="stype"]').forEach(r => {
+            r.addEventListener('change', performSearch);
+        });
+
+        // データの描画（ここでエラーが出てもオーバーレイだけは消すためにtry-catchを分ける）
+        try {
+            renderTable();
+        } catch (renderError) {
+            console.error("Render Table Error:", renderError);
         }
 
-        const rawData = await res.json();
-        console.log("Data received:", rawData);
-
-        if (rawData.error) {
-            throw new Error(`GAS内部エラー: ${rawData.error}`);
-        }
-
-        allSongs = rawData;
-        
-        // 正常終了
-        document.getElementById('loadingOverlay').classList.add('hidden');
-        document.getElementById('searchQuery').addEventListener('input', performSearch);
-        document.querySelectorAll('input[name="stype"]').forEach(r => r.addEventListener('change', performSearch));
-        renderTable();
+        // 全行程完了。何があっても最後は消す
+        if(overlay) overlay.classList.add('hidden');
 
     } catch (e) {
-        console.error("Debug Error:", e);
-        // ユーザーの画面にエラーを表示して「なぜ止まっているか」を可視化
-        loadingText.style.color = "#ff4d4d";
-        loadingText.innerHTML = `
-            読み込み失敗<br>
-            <span style="font-size:0.8em; font-weight:normal;">
-                理由: ${e.message}<br>
-                ※GASのURLが正しいか、公開設定が「全員」か確認してください。
-            </span>`;
+        console.error("Critical Error:", e);
+        const loadingText = document.querySelector('.loading-text');
+        if(loadingText) {
+            loadingText.style.color = "#ff4d4d";
+            loadingText.innerText = "データ処理エラーが発生しました。";
+        }
     }
 };
 
-// --- 以下、描画処理（変更なし） ---
-
-function switchTab(t) {
-    document.querySelectorAll('.tab-btn, .tab-content').forEach(el => el.classList.remove('active'));
-    document.getElementById('tab-btn-' + t).classList.add('active');
-    document.getElementById(t + '-tab').classList.add('active');
+// 描画エラーを防ぐための安全なフォーマッタ
+function formatDate(dateStr) {
+    if (!dateStr || dateStr === '-') return '-';
+    try {
+        const d = new Date(dateStr);
+        if (isNaN(d.getTime())) return String(dateStr).split('T')[0] || dateStr;
+        return `${d.getFullYear()}/${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getDate().toString().padStart(2, '0')}`;
+    } catch (e) { return '-'; }
 }
 
 function highlightText(text, query) {
     if (!query || !text) return text || '';
-    const regex = new RegExp(`(${query})`, 'gi');
-    return String(text).replace(regex, '<span class="highlight">$1</span>');
+    try {
+        const regex = new RegExp(`(${query})`, 'gi');
+        return String(text).replace(regex, '<span class="highlight">$1</span>');
+    } catch(e) { return text; }
 }
 
 function performSearch() {
-    const query = document.getElementById('searchQuery').value.trim();
-    const type = document.querySelector('input[name="stype"]:checked').value;
+    const queryEl = document.getElementById('searchQuery');
     const container = document.getElementById('searchResults');
+    const typeEl = document.querySelector('input[name="stype"]:checked');
+    if (!queryEl || !container || !typeEl) return;
+
+    const query = queryEl.value.trim();
+    const type = typeEl.value;
     
     if (!query) {
         container.innerHTML = '';
@@ -76,12 +81,12 @@ function performSearch() {
             tieup: [s['タイアップ']],
             all: [s['曲名'], s['曲名の読み'], s['アーティスト'], s['アーティストの読み'], s['タイアップ']]
         };
-        return fields[type].some(f => (f || '').toLowerCase().includes(lowerQuery));
+        return (fields[type] || fields['all']).some(f => (f || '').toLowerCase().includes(lowerQuery));
     });
 
     document.getElementById('resultCountInline').innerText = filtered.length + '件';
     
-    container.innerHTML = filtered.map(s => `
+    container.innerHTML = filtered.slice(0, 100).map(s => `
         <div class="result-item">
             <div class="song-title">${highlightText(s['曲名'], query)}</div>
             <div class="song-artist">${highlightText(s['アーティスト'], query)}</div>
@@ -90,23 +95,24 @@ function performSearch() {
                 <span>演奏回数: ${s['演奏回数'] || 0}回</span>
                 <span>最終演奏: ${formatDate(s['最終演奏'])}</span>
             </div>
-            <button class="copy-btn" onclick="copyText('${s['曲名']} / ${s['アーティスト']}')">コピー</button>
+            <button class="copy-btn" onclick="copyText('${(s['曲名'] || '').replace(/'/g, "\\'")} / ${(s['アーティスト'] || '').replace(/'/g, "\\ Italy")}')">コピー</button>
         </div>
     `).join('');
-}
-
-function handleSort(key) {
-    sortAsc = (sortKey === key) ? !sortAsc : false;
-    sortKey = key;
-    renderTable();
 }
 
 function renderTable() {
     const tbody = document.getElementById('songListBody');
     if (!tbody) return;
+
     const sorted = [...allSongs].sort((a, b) => {
-        let v1 = a[sortKey] || '', v2 = b[sortKey] || '';
-        if (sortKey === '演奏回数') { v1 = Number(v1) || 0; v2 = Number(v2) || 0; }
+        let v1 = a[sortKey], v2 = b[sortKey];
+        if (sortKey === '演奏回数') {
+            v1 = parseInt(v1) || 0;
+            v2 = parseInt(v2) || 0;
+        } else {
+            v1 = String(v1 || '');
+            v2 = String(v2 || '');
+        }
         return sortAsc ? (v1 > v2 ? 1 : -1) : (v1 < v2 ? 1 : -1);
     });
     
@@ -120,20 +126,19 @@ function renderTable() {
     `).join('');
 }
 
-function formatDate(dateStr) {
-    if (!dateStr || dateStr === '-') return '-';
-    try {
-        const d = new Date(dateStr);
-        if (isNaN(d.getTime())) return dateStr;
-        return `${d.getFullYear()}/${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getDate().toString().padStart(2, '0')}`;
-    } catch (e) { return dateStr; }
+function handleSort(key) {
+    sortAsc = (sortKey === key) ? !sortAsc : false;
+    sortKey = key;
+    renderTable();
 }
 
 function copyText(txt) {
     navigator.clipboard.writeText(txt).then(() => {
         const t = document.getElementById('copyToast');
-        t.classList.add('show');
-        setTimeout(() => t.classList.remove('show'), 2000);
+        if(t) {
+            t.classList.add('show');
+            setTimeout(() => t.classList.remove('show'), 2000);
+        }
     });
 }
 
