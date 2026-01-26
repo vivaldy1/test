@@ -60,6 +60,7 @@ function performSearch() {
     document.getElementById('resultCountInline').innerText = filtered.length + '件';
     
     container.innerHTML = filtered.map(s => {
+        // YouTubeのVIDEO_IDがある場合のみライブリンクを表示
         const ytLink = s['YouTube'] ? `https://www.youtube.com/live/${s['YouTube']}` : '';
         return `
             <div class="result-item">
@@ -69,9 +70,9 @@ function performSearch() {
                 <div class="song-meta">
                     <span>演奏回数: ${s['演奏回数'] || 0}回</span>
                     <span>最終演奏: ${formatDate(s['最終演奏'])}</span>
+                    ${ytLink ? `<a href="${ytLink}" target="_blank" class="yt-live-tag">🔴 LIVE</a>` : ''}
                 </div>
                 <button class="copy-btn" onclick="copyText('${(s['曲名']||'').replace(/'/g,"\\'")} / ${(s['アーティスト']||'').replace(/'/g,"\\'")}')">コピー</button>
-                ${ytLink ? `<a href="${ytLink}" target="_blank" class="yt-live-link">🔴 YouTube Live</a>` : ''}
             </div>`;
     }).join('');
 }
