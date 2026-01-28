@@ -587,7 +587,13 @@ async function forceReloadData(refreshBtn, loader) {
     if (isUpdating) return;
     
     isUpdating = true;
-    refreshBtn.classList.add('loading');
+    
+    // ローディング表示をON
+    if (loader) {
+        loader.classList.remove('hidden');
+        const text = loader.querySelector('.loading-text');
+        if (text) text.innerText = 'データを再読み込んでいます...';
+    }
     
     try {
         // キャッシュをクリア
@@ -619,21 +625,23 @@ async function forceReloadData(refreshBtn, loader) {
             listFilter.value = '';
             
             console.log('データを強制リロードしました');
+            
+            // ローディング非表示
+            if (loader) loader.classList.add('hidden');
         } else {
             throw new Error('No data returned from server');
         }
     } catch (error) {
         console.error('Reload error:', error);
-        // エラートースト表示
-        const toast = document.getElementById('copyToast');
-        if (toast) {
-            toast.textContent = 'リロードに失敗しました';
-            toast.classList.add('show');
-            setTimeout(() => toast.classList.remove('show'), 2000);
+        
+        // ローディング非表示
+        if (loader) {
+            const text = loader.querySelector('.loading-text');
+            if (text) text.innerText = 'リロードに失敗しました';
+            setTimeout(() => loader.classList.add('hidden'), 2000);
         }
     } finally {
         isUpdating = false;
-        refreshBtn.classList.remove('loading');
     }
 }
 
