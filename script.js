@@ -349,6 +349,7 @@ window.onload = async () => {
     const clearBtn = document.getElementById('clearSearch');
     const listFilter = document.getElementById('listFilter');
     const filterClear = document.getElementById('filterClear');
+    const refreshBtn = document.getElementById('refreshBtn');
     
     // Setup event listeners for clear buttons
     if (clearBtn) {
@@ -363,6 +364,13 @@ window.onload = async () => {
             listFilter.value = '';
             filterList();
         }
+    }
+    
+    // リロードボタンのイベントリスナー
+    if (refreshBtn) {
+        refreshBtn.onclick = async () => {
+            await forceReloadData(refreshBtn, loader);
+        };
     }
     
     // BUGFIX: Use event delegation for copy buttons instead of onclick handlers
@@ -523,9 +531,62 @@ function handleLoadingError(loader, message) {
 }
 
 /**
- * Fetch live stream status
+ * 強制的にデータをリロード
  */
-function fetchLiveStatus() {
+async function forceReloadData(refreshBtn, loader) {
+    // すでにリロード中なら実行しない
+    if (isUpdating) return;
+    
+    isUpdating = true;
+    refreshBtn.classList.add('loading');
+    
+    try {
+        // キャッシュをクリア
+        clearCache();
+        
+        // サーバーから強制取得
+        const data = await fetchDataFromServer();
+        if (data && data.length > 0) {
+            allSongs = data;
+            filteredListSongs = [...allSongs];
+            setCachedData(allSongs);
+            
+            // 現在のビューをリセット
+            currentPage = 1;
+            sortKey = '最終演奏';
+            sortAsc = false;
+            
+            // テーブルを再描画
+            renderTable();
+            
+            // 検索結果をクリア
+            const searchInput = document.getElementById('searchQuery');
+            searchInput.value = '';
+            document.getElementById('searchResults').innerHTML = '';
+            document.getElementById('resultCountInline').innerText = '';
+            
+            // リスト内フィルタをクリア
+            const listFilter = document.getElementById('listFilter');
+            listFilter.value = '';
+            
+            console.log('データを強制リロードしました');
+        } else {
+            throw new Error('No data returned from server');
+        }
+    } catch (error) {
+        console.error('Reload error:', error);
+        // エラートースト表示
+        const toast = document.getElementById('copyToast');
+        if (toast) {
+            toast.textContent = 'リロードに失敗しました';
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 2000);
+        }
+    } finally {
+        isUpdating = false;
+        refreshBtn.classList.remove('loading');
+    }
+}
     fetch('https://script.googleusercontent.com/macros/echo?user_content_key=AehSKLg3Mh9pD1cfoLjzGKoWN85Gk3bYFpPA8-oPlNbFXDQwZSrx-7YQn1Qy7_tmEpzzorOTQow9QIbVsKVjgfXUiI3hUpHNtQaVxF5FRYozt4ziG3OutQJSWtSqXCcdeJU7a_Uhr2j0KiH3Kw9PaSSjYaZ-Pxx2MUB2AEtN-ozLj-H6GBxw8JOISVRz8QT-ziXa-lUbnL0NULykgmNlOLH-s4Jnt-Py_bQ05foDbnH9BD7EgMzudhnWfWM6yEP4M21osh0JprLH-ddjFiDhSqven0yIHGmO3cNRqPPRjvzm&lib=MXVx9ipRNFTfomE6WbanXaGJpguNqVXQJ')
         .then(response => response.json())
         .then(data => {
