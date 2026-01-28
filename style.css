@@ -7,27 +7,6 @@
 .clear-btn.show {
     display: block;
 }
-.yt-link-container {
-    position: relative;
-    display: inline-flex;
-}
-.live-badge {
-    display: none;
-    position: absolute;
-    top: -4px;
-    right: -4px;
-    background: #764ba2;
-    color: white;
-    font-size: 9px;
-    font-weight: bold;
-    padding: 2px 5px;
-    border-radius: 3px;
-    animation: pulse 2s ease-in-out infinite;
-    pointer-events: none;
-}
-.live-badge.active {
-    display: block;
-}
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
@@ -51,7 +30,6 @@ body {
     align-items: center;
     margin-bottom: 20px;
     gap: 20px;
-    flex-wrap: wrap;
 }
 
 h1 {
@@ -59,100 +37,152 @@ h1 {
     text-align: center;
     font-size: 2.2em;
     flex: 1;
-    min-width: 200px;
-    order: 2;
+    margin: 0;
 }
 
-/* ヘッダーの左側アイコン */
-.icon-links-left {
-    display: flex;
-    gap: 12px;
-    align-items: center;
-    order: 1;
-}
-
-/* ヘッダーの右側アイコン */
-.icon-links-right {
-    display: flex;
-    gap: 20px;
-    align-items: center;
-    order: 3;
-    justify-content: flex-end;
-}
-
-.icon-group {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.icon-link {
-    display: inline-flex;
-    transition: transform 0.2s ease;
-    text-decoration: none;
+/* ==================== バーガーメニュー ==================== */
+.burger-menu {
     position: relative;
 }
 
-.icon-link:hover {
-    transform: scale(1.1);
-}
-
-.icon-label {
-    font-size: 12px;
-    color: #718096;
-    font-weight: 500;
-    white-space: nowrap;
-}
-
-.yt-icon {
-    width: 36px;
-    height: 36px;
-    fill: #FF0000;
-}
-
-.sheets-icon {
-    width: 36px;
-    height: 36px;
-    fill: #0F9D58;
-}
-
-/* リロードボタン */
-.refresh-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
+.burger-btn {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-around;
+    width: 50px;
+    height: 50px;
     background: #f7fafc;
     border: 2px solid #e2e8f0;
     border-radius: 8px;
-    padding: 8px;
     cursor: pointer;
-    transition: all 0.2s ease;
-    width: 40px;
-    height: 40px;
+    padding: 8px;
+    transition: all 0.3s ease;
 }
 
-.refresh-btn:hover {
+.burger-btn:hover {
     background: #667eea;
     border-color: #667eea;
 }
 
-.refresh-btn:active {
-    transform: scale(0.95);
+.burger-btn span {
+    width: 100%;
+    height: 3px;
+    background: #4a5568;
+    border-radius: 2px;
+    transition: all 0.3s ease;
+    display: block;
 }
 
-.refresh-icon {
+.burger-btn:hover span {
+    background: white;
+}
+
+.burger-btn.active span:nth-child(1) {
+    transform: rotate(45deg) translate(8px, 8px);
+}
+
+.burger-btn.active span:nth-child(2) {
+    opacity: 0;
+}
+
+.burger-btn.active span:nth-child(3) {
+    transform: rotate(-45deg) translate(8px, -8px);
+}
+
+/* バーガーメニュー内容 */
+.burger-menu-content {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    min-width: 220px;
+    margin-top: 8px;
+    display: none;
+    z-index: 1000;
+    overflow: hidden;
+}
+
+.burger-menu-content.active {
+    display: flex;
+    flex-direction: column;
+    animation: slideDown 0.3s ease;
+}
+
+.burger-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    color: #4a5568;
+    text-decoration: none;
+    border: none;
+    background: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 14px;
+    font-weight: 500;
+    border-bottom: 1px solid #e2e8f0;
+    font-family: inherit;
+}
+
+.burger-menu-item:last-child {
+    border-bottom: none;
+}
+
+.burger-menu-item:hover {
+    background-color: #f7fafc;
+    color: #667eea;
+}
+
+.burger-menu-item:active {
+    background-color: #edf2f7;
+}
+
+.burger-icon {
     width: 24px;
     height: 24px;
+    flex-shrink: 0;
+}
+
+.burger-menu-item .yt-icon {
+    fill: #FF0000;
+}
+
+.burger-menu-item .sheets-icon {
+    fill: #0F9D58;
+}
+
+.burger-menu-item .refresh-icon {
     fill: #4a5568;
-    transition: fill 0.2s ease;
 }
 
-.refresh-btn:hover .refresh-icon {
-    fill: white;
+.burger-menu-item:hover .refresh-icon {
+    fill: #667eea;
 }
 
-.refresh-btn.loading .refresh-icon {
-    animation: spin 1s linear infinite;
+.burger-refresh-btn {
+    border: none;
+    padding: 12px 16px;
+}
+
+.burger-menu-item span {
+    position: relative;
+}
+
+.burger-menu-item .live-badge {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background: #764ba2;
+    color: white;
+    font-size: 8px;
+    font-weight: bold;
+    padding: 2px 4px;
+    border-radius: 2px;
+    animation: pulse 2s ease-in-out infinite;
 }
 
 /* タブ */
@@ -538,6 +568,18 @@ tr:hover td {
         transform: translateY(0);
     }
 }
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
 @keyframes spin {
     to {
         transform: rotate(360deg);
@@ -580,42 +622,12 @@ tr:hover td {
     }
     
     .header-top {
-        flex-direction: column;
-        gap: 15px;
+        gap: 12px;
     }
     
-    h1 {
-        order: 1;
-        min-width: auto;
-        margin-bottom: 0;
-    }
-    
-    .icon-links-left {
-        order: 2;
-        justify-content: center;
-        width: 100%;
-    }
-    
-    .icon-links-right {
-        order: 3;
-        justify-content: center;
-        width: 100%;
-    }
-    
-    .yt-icon,
-    .sheets-icon {
-        width: 28px;
-        height: 28px;
-    }
-    
-    .refresh-btn {
-        width: 36px;
-        height: 36px;
-    }
-    
-    .refresh-icon {
-        width: 20px;
-        height: 20px;
+    .burger-btn {
+        width: 46px;
+        height: 46px;
     }
     
     th,
