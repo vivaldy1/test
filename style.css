@@ -40,6 +40,44 @@ h1 {
     margin: 0;
 }
 
+/* YouTubeアイコン（左上、バーガーメニュー外） */
+.yt-link-solo {
+    position: relative;
+    display: inline-flex;
+    transition: transform 0.2s ease;
+    text-decoration: none;
+    flex-shrink: 0;
+}
+
+.yt-link-solo:hover {
+    transform: scale(1.1);
+}
+
+.yt-icon-solo {
+    width: 40px;
+    height: 40px;
+    fill: #FF0000;
+}
+
+.live-badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    background: #764ba2;
+    color: white;
+    font-size: 9px;
+    font-weight: bold;
+    padding: 2px 5px;
+    border-radius: 3px;
+    animation: pulse 2s ease-in-out infinite;
+    pointer-events: none;
+    display: none;
+}
+
+.live-badge.active {
+    display: block;
+}
+
 /* ==================== バーガーメニュー ==================== */
 .burger-menu {
     position: relative;
