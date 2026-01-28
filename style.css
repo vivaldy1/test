@@ -109,6 +109,7 @@ h1 {
     border-radius: 2px;
     transition: all 0.3s ease;
     display: block;
+    transform-origin: left center;
 }
 
 .burger-btn:hover span {
@@ -116,15 +117,16 @@ h1 {
 }
 
 .burger-btn.active span:nth-child(1) {
-    transform: rotate(45deg) translate(8px, 8px);
+    transform: rotate(45deg) translate(2px, -2px);
 }
 
 .burger-btn.active span:nth-child(2) {
     opacity: 0;
+    transform: translateX(-10px);
 }
 
 .burger-btn.active span:nth-child(3) {
-    transform: rotate(-45deg) translate(8px, -8px);
+    transform: rotate(-45deg) translate(2px, 2px);
 }
 
 /* バーガーメニュー内容 */
