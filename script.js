@@ -340,9 +340,57 @@ function initDragScroll() {
     };
 }
 
+/**
+ * バーガーメニューの初期化
+ */
+function setupBurgerMenu() {
+    const burgerBtn = document.getElementById('burgerBtn');
+    const burgerMenu = document.getElementById('burgerMenu');
+    const burgerMenuItems = document.querySelectorAll('.burger-menu-item');
+    
+    if (!burgerBtn || !burgerMenu) return;
+    
+    // ボタンをクリックしてメニューを開閉
+    burgerBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        burgerBtn.classList.toggle('active');
+        burgerMenu.classList.toggle('active');
+    });
+    
+    // メニュー項目をクリック
+    burgerMenuItems.forEach(item => {
+        item.addEventListener('click', (e) => {
+            // ボタンの場合のみメニューを閉じる（リンクはそのまま遷移）
+            if (item.tagName === 'BUTTON') {
+                e.preventDefault();
+                closeBurgerMenu();
+            }
+        });
+    });
+    
+    // 外側をクリックしたらメニューを閉じる
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.burger-menu')) {
+            closeBurgerMenu();
+        }
+    });
+}
+
+/**
+ * バーガーメニューを閉じる
+ */
+function closeBurgerMenu() {
+    const burgerBtn = document.getElementById('burgerBtn');
+    const burgerMenu = document.getElementById('burgerMenu');
+    
+    if (burgerBtn) burgerBtn.classList.remove('active');
+    if (burgerMenu) burgerMenu.classList.remove('active');
+}
+
 // ==================== INITIALIZATION ====================
 window.onload = async () => {
     initDragScroll();
+    setupBurgerMenu();
     
     const loader = document.getElementById('loadingOverlay');
     const searchInput = document.getElementById('searchQuery');
@@ -370,6 +418,7 @@ window.onload = async () => {
     if (refreshBtn) {
         refreshBtn.onclick = async () => {
             await forceReloadData(refreshBtn, loader);
+            closeBurgerMenu();  // メニューを閉じる
         };
     }
     
