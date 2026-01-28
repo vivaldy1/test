@@ -6,6 +6,55 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Song List DB</title>
     <link rel="stylesheet" href="style.css">
+    <style>
+        /* クリティカルCSS - インライン化 */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            margin: 0;
+            padding: 0;
+            background: #f7fafc;
+        }
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.95);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            transition: opacity 0.3s ease;
+        }
+        .loading-overlay.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #e2e8f0;
+            border-top: 4px solid #3182ce;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .loading-text {
+            margin-top: 16px;
+            color: #718096;
+            font-size: 14px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+    </style>
 </head>
 <body>
     <div id="loadingOverlay" class="loading-overlay">
@@ -70,6 +119,62 @@
         </div>
     </div>
     <div id="copyToast" class="copy-toast">コピーしました</div>
-    <script src="script.js"></script>
+    
+    <!-- メインスクリプトを非同期読み込み -->
+    <script src="script.js" async></script>
+    
+    <!-- LIVEステータス取得（低優先度） -->
+    <script>
+        // ページレンダリング後にLIVEステータスを取得
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', fetchLiveStatus);
+        } else {
+            fetchLiveStatus();
+        }
+        
+        function fetchLiveStatus() {
+            // requestIdleCallback を使用してメインスレッドが空いている時に実行
+            if ('requestIdleCallback' in window) {
+                requestIdleCallback(() => {
+                    fetch('https://script.googleusercontent.com/macros/echo?user_content_key=AehSKLg3Mh9pD1cfoLjzGKoWN85Gk3bYFpPA8-oPlNbFXDQwZSrx-7YQn1Qy7_tmEpzzorOTQow9QIbVsKVjgfXUiI3hUpHNtQaVxF5FRYozt4ziG3OutQJSWtSqXCcdeJU7a_Uhr2j0KiH3Kw9PaSSjYaZ-Pxx2MUB2AEtN-ozLj-H6GBxw8JOISVRz8QT-ziXa-lUbnL0NULykgmNlOLH-s4Jnt-Py_bQ05foDbnH9BD7EgMzudhnWfWM6yEP4M21osh0JprLH-ddjFiDhSqven0yIHGmO3cNRqPPRjvzm&lib=MXVx9ipRNFTfomE6WbanXaGJpguNqVXQJ', { signal: AbortSignal.timeout(3000) })
+                        .then(response => response.json())
+                        .then(data => {
+                            const ytLink = document.getElementById('headerYtLink');
+                            if (data.liveVideoUrl && data.liveVideoUrl.trim() !== '') {
+                                ytLink.href = data.liveVideoUrl;
+                                ytLink.title = 'ライブ配信を開く';
+                                const liveBadge = document.getElementById('liveBadge');
+                                if (liveBadge) {
+                                    liveBadge.classList.add('active');
+                                }
+                            }
+                        })
+                        .catch(error => {
+                            console.error('ライブ配信URL取得エラー:', error);
+                        });
+                }, { timeout: 5000 });
+            } else {
+                // フォールバック: 遅延実行
+                setTimeout(() => {
+                    fetch('https://script.googleusercontent.com/macros/echo?user_content_key=AehSKLg3Mh9pD1cfoLjzGKoWN85Gk3bYFpPA8-oPlNbFXDQwZSrx-7YQn1Qy7_tmEpzzorOTQow9QIbVsKVjgfXUiI3hUpHNtQaVxF5FRYozt4ziG3OutQJSWtSqXCcdeJU7a_Uhr2j0KiH3Kw9PaSSjYaZ-Pxx2MUB2AEtN-ozLj-H6GBxw8JOISVRz8QT-ziXa-lUbnL0NULykgmNlOLH-s4Jnt-Py_bQ05foDbnH9BD7EgMzudhnWfWM6yEP4M21osh0JprLH-ddjFiDhSqven0yIHGmO3cNRqPPRjvzm&lib=MXVx9ipRNFTfomE6WbanXaGJpguNqVXQJ', { signal: AbortSignal.timeout(3000) })
+                        .then(response => response.json())
+                        .then(data => {
+                            const ytLink = document.getElementById('headerYtLink');
+                            if (data.liveVideoUrl && data.liveVideoUrl.trim() !== '') {
+                                ytLink.href = data.liveVideoUrl;
+                                ytLink.title = 'ライブ配信を開く';
+                                const liveBadge = document.getElementById('liveBadge');
+                                if (liveBadge) {
+                                    liveBadge.classList.add('active');
+                                }
+                            }
+                        })
+                        .catch(error => {
+                            console.error('ライブ配信URL取得エラー:', error);
+                        });
+                }, 2000);
+            }
+        }
+    </script>
 </body>
 </html>
