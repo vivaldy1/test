@@ -43,42 +43,118 @@ body {
     padding: 30px;
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
 }
+
+/* ==================== ヘッダーレイアウト修正 ==================== */
+.header-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
 h1 {
     color: #4a5568;
     text-align: center;
-    padding-top: 20px;
-    margin-bottom: 20px;
     font-size: 2.2em;
-    position: relative;
+    flex: 1;
+    min-width: 200px;
+    order: 2;
 }
-/* ヘッダーのアイコンリンク */
-.icon-links {
-    position: absolute;
-    top: 0;
-    right: 0;
+
+/* ヘッダーの左側アイコン */
+.icon-links-left {
     display: flex;
     gap: 12px;
     align-items: center;
+    order: 1;
 }
+
+/* ヘッダーの右側アイコン */
+.icon-links-right {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    order: 3;
+    justify-content: flex-end;
+}
+
+.icon-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
 .icon-link {
     display: inline-flex;
     transition: transform 0.2s ease;
     text-decoration: none;
     position: relative;
 }
+
 .icon-link:hover {
     transform: scale(1.1);
 }
+
+.icon-label {
+    font-size: 12px;
+    color: #718096;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
 .yt-icon {
     width: 36px;
     height: 36px;
     fill: #FF0000;
 }
+
 .sheets-icon {
     width: 36px;
     height: 36px;
     fill: #0F9D58;
 }
+
+/* リロードボタン */
+.refresh-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #f7fafc;
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    width: 40px;
+    height: 40px;
+}
+
+.refresh-btn:hover {
+    background: #667eea;
+    border-color: #667eea;
+}
+
+.refresh-btn:active {
+    transform: scale(0.95);
+}
+
+.refresh-icon {
+    width: 24px;
+    height: 24px;
+    fill: #4a5568;
+    transition: fill 0.2s ease;
+}
+
+.refresh-btn:hover .refresh-icon {
+    fill: white;
+}
+
+.refresh-btn.loading .refresh-icon {
+    animation: spin 1s linear infinite;
+}
+
 /* タブ */
 .tabs {
     display: flex;
@@ -502,14 +578,46 @@ tr:hover td {
     h1 {
         font-size: 1.6em;
     }
+    
+    .header-top {
+        flex-direction: column;
+        gap: 15px;
+    }
+    
+    h1 {
+        order: 1;
+        min-width: auto;
+        margin-bottom: 0;
+    }
+    
+    .icon-links-left {
+        order: 2;
+        justify-content: center;
+        width: 100%;
+    }
+    
+    .icon-links-right {
+        order: 3;
+        justify-content: center;
+        width: 100%;
+    }
+    
     .yt-icon,
     .sheets-icon {
         width: 28px;
         height: 28px;
     }
-    .icon-links {
-        gap: 8px;
+    
+    .refresh-btn {
+        width: 36px;
+        height: 36px;
     }
+    
+    .refresh-icon {
+        width: 20px;
+        height: 20px;
+    }
+    
     th,
     td {
         padding: 10px;
