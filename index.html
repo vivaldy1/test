@@ -13,18 +13,30 @@
         <p class="loading-text">データを読み込んでいます...</p>
     </div>
     <div class="container">
-        <h1>
-            朔栖まよ🍼🎷曲検索
-            <div class="icon-links">
-                <a id="headerYtLink" href="https://www.youtube.com/@asaxmayo" target="_blank" class="yt-link-container">
+        <div class="header-top">
+            <div class="icon-links-left">
+                <a id="headerYtLink" href="https://www.youtube.com/@asaxmayo" target="_blank" class="yt-link-container" title="YouTube">
                     <svg class="yt-icon" viewBox="0 0 24 24"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.377.505 9.377.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
                     <span id="liveBadge" class="live-badge">LIVE</span>
                 </a>
-                <a href="https://docs.google.com/spreadsheets/d/1lPv2iDZbVeVTyvMNHXIZMUfDFd7rDrebFVKBckSMoF4/edit?pli=1&gid=1677386991#gid=1677386991" target="_blank" class="icon-link">
-                    <svg class="sheets-icon" viewBox="0 0 24 24"><path d="M14.5 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V7.5L14.5 2zM19 20H5V4h8v5h5v11zM7 11h10v2H7v-2zm0 4h10v2H7v-2z"/></svg>
-                </a>
             </div>
-        </h1>
+            
+            <h1>朔栖まよ🍼🎷曲検索</h1>
+            
+            <div class="icon-links-right">
+                <div class="icon-group">
+                    <a href="https://docs.google.com/spreadsheets/d/1lPv2iDZbVeVTyvMNHXIZMUfDFd7rDrebFVKBckSMoF4/edit?pli=1&gid=1677386991#gid=1677386991" target="_blank" class="icon-link" title="Google Sheets">
+                        <svg class="sheets-icon" viewBox="0 0 24 24"><path d="M14.5 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V7.5L14.5 2zM19 20H5V4h8v5h5v11zM7 11h10v2H7v-2zm0 4h10v2H7v-2z"/></svg>
+                    </a>
+                    <span class="icon-label">スプレッドシート</span>
+                </div>
+                
+                <button id="refreshBtn" class="refresh-btn" title="データを再読み込み">
+                    <svg class="refresh-icon" viewBox="0 0 24 24"><path d="M1 4v6h6M23 20v-6h-6M20.3 5.51C18.52 3.5 15.68 2 12.5 2c-5.33 0-9.69 3.81-10.59 8.87H0c1.05-6.81 6.84-12 13.5-12 3.73 0 7.14 1.57 9.5 4.05L23 2v6h-6M3.87 9.1c.9-5.05 5.25-8.87 10.63-8.87 2.68 0 5.15.93 7.11 2.49L1 13v-6h6M2 22c1.05 6.81 6.84 12 13.5 12 3.73 0 7.14-1.57 9.5-4.05L23 22v6h-6M3.87 14.9c.9 5.05 5.25 8.87 10.63 8.87 2.68 0 5.15-.93 7.11-2.49L1 11v6h6"/></svg>
+                </button>
+                <span class="icon-label">リロード</span>
+            </div>
+        </div>
         
         <div class="tabs">
             <button class="tab-btn active" id="tab-btn-search" onclick="switchTab('search')">検索</button>
