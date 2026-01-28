@@ -71,33 +71,25 @@ window.switchTab = (t) => {
 };
 
 // 3. 初期化
-window.onload = async () => {
-    initDragScroll();
-    
-    // LIVEステータス取得
-    fetch('https://script.googleusercontent.com/macros/echo?user_content_key=AehSKLg3Mh9pD1cfoLjzGKoWN85Gk3bYFpPA8-oPlNbFXDQwZSrx-7YQn1Qy7_tmEpzzorOTQow9QIbVsKVjgfXUiI3hUpHNtQaVxF5FRYozt4ziG3OutQJSWtSqXCcdeJU7a_Uhr2j0KiH3Kw9PaSSjYaZ-Pxx2MUB2AEtN-ozLj-H6GBxw8JOISVRz8QT-ziXa-lUbnL0NULykgmNlOLH-s4Jnt-Py_bQ05foDbnH9BD7EgMzudhnWfWM6yEP4M21osh0JprLH-ddjFiDhSqven0yIHGmO3cNRqPPRjvzm&lib=MXVx9ipRNFTfomE6WbanXaGJpguNqVXQJ')
-        .then(response => response.json())
-        .then(data => {
-            const ytLink = document.getElementById('headerYtLink');
-            if (data.liveVideoUrl && data.liveVideoUrl.trim() !== '') {
-                ytLink.href = data.liveVideoUrl;
-                ytLink.title = 'ライブ配信を開く';
-                const liveBadge = document.getElementById('liveBadge');
-                if (liveBadge) {
-                    liveBadge.classList.add('active');
-                }
-            }
-        })
-        .catch(error => {
-            console.error('ライブ配信URL取得エラー:', error);
-        });
+window.addEventListener('DOMContentLoaded', initApp);
 
+async function initApp() {
+    // すぐに DOM 操作を開始
     const loader = document.getElementById('loadingOverlay');
     const searchInput = document.getElementById('searchQuery');
     const clearBtn = document.getElementById('clearSearch');
     const listFilter = document.getElementById('listFilter');
     const filterClear = document.getElementById('filterClear');
 
+    // UI初期化（ブロッキング処理ではない）
+    initDragScroll();
+    setupEventListeners(searchInput, clearBtn, listFilter, filterClear);
+
+    // データ読み込みを非同期で実行
+    loadData(loader, searchInput, listFilter, filterClear);
+}
+
+function setupEventListeners(searchInput, clearBtn, listFilter, filterClear) {
     // ×ボタンのクリックイベント
     if (clearBtn) {
         clearBtn.onclick = () => {
@@ -111,7 +103,12 @@ window.onload = async () => {
             filterList();
         }
     }
+}
 
+async function loadData(loader, searchInput, listFilter, filterClear) {
+    // 初期UIをすぐに表示
+    if (loader) loader.style.display = 'flex';
+    
     try {
         // キャッシュから先に確認
         const cachedData = getCachedData();
@@ -122,52 +119,43 @@ window.onload = async () => {
             filteredListSongs = [...allSongs];
             
             // イベントリスナーの登録
-            searchInput?.addEventListener('input', performSearch);
-            document.querySelectorAll('input[name="stype"]').forEach(r => {
-                r.addEventListener('change', performSearch);
-            });
-            listFilter?.addEventListener('input', function () {
-                clearTimeout(listFilterTimeout);
-                listFilterTimeout = setTimeout(filterList, 300);
-                if (filterClear) filterClear.classList.toggle('visible', listFilter.value.length > 0);
-            });
+            registerEventListeners(searchInput, listFilter, filterClear);
             
             // 初期表示
             renderTable();
             if (loader) loader.classList.add('hidden');
             
             // バックグラウンドで新しいデータを取得（キャッシュを更新）
-            fetch(GAS_URL)
-                .then(res => res.json())
-                .then(data => {
-                    allSongs = data;
-                    setCachedData(data);
-                    filteredListSongs = [...allSongs];
-                    renderTable();
-                    console.log('バックグラウンドで更新完了');
-                })
-                .catch(error => console.error('バックグラウンド更新エラー:', error));
+            // requestIdleCallback を使用して優先度を下げる
+            if ('requestIdleCallback' in window) {
+                requestIdleCallback(() => {
+                    updateDataInBackground();
+                }, { timeout: 10000 });
+            } else {
+                setTimeout(updateDataInBackground, 2000);
+            }
         } else {
             // キャッシュがない場合はサーバーから取得
-            const res = await fetch(GAS_URL);
-            allSongs = await res.json();
-            filteredListSongs = [...allSongs];
-            setCachedData(allSongs);
-            
-            // イベントリスナーの登録
-            searchInput?.addEventListener('input', performSearch);
-            document.querySelectorAll('input[name="stype"]').forEach(r => {
-                r.addEventListener('change', performSearch);
-            });
-            listFilter?.addEventListener('input', function () {
-                clearTimeout(listFilterTimeout);
-                listFilterTimeout = setTimeout(filterList, 300);
-                if (filterClear) filterClear.classList.toggle('visible', listFilter.value.length > 0);
-            });
-            
-            // 初期表示
-            renderTable();
-            if (loader) loader.classList.add('hidden');
+            try {
+                const res = await fetch(GAS_URL, { signal: AbortSignal.timeout(10000) });
+                allSongs = await res.json();
+                filteredListSongs = [...allSongs];
+                setCachedData(allSongs);
+                
+                // イベントリスナーの登録
+                registerEventListeners(searchInput, listFilter, filterClear);
+                
+                // 初期表示
+                renderTable();
+                if (loader) loader.classList.add('hidden');
+            } catch (fetchError) {
+                console.error("初回データ読み込みエラー:", fetchError);
+                // オフラインまたはタイムアウト時の処理
+                if (loader) {
+                    const text = loader.querySelector('.loading-text');
+                    if (text) text.innerText = "データの読み込みに失敗しました。インターネット接続をご確認ください。";
+                }
+            }
         }
     } catch (e) {
         console.error("Data Load Error:", e);
@@ -176,7 +164,34 @@ window.onload = async () => {
             if (text) text.innerText = "データの読み込みに失敗しました。";
         }
     }
-};
+}
+
+function registerEventListeners(searchInput, listFilter, filterClear) {
+    searchInput?.addEventListener('input', performSearch);
+    document.querySelectorAll('input[name="stype"]').forEach(r => {
+        r.addEventListener('change', performSearch);
+    });
+    listFilter?.addEventListener('input', function () {
+        clearTimeout(listFilterTimeout);
+        listFilterTimeout = setTimeout(filterList, 300);
+        if (filterClear) filterClear.classList.toggle('visible', listFilter.value.length > 0);
+    });
+}
+
+function updateDataInBackground() {
+    fetch(GAS_URL, { signal: AbortSignal.timeout(8000) })
+        .then(res => res.json())
+        .then(data => {
+            allSongs = data;
+            setCachedData(data);
+            filteredListSongs = [...allSongs];
+            renderTable();
+            console.log('バックグラウンドで更新完了');
+        })
+        .catch(error => console.error('バックグラウンド更新エラー:', error));
+}
+
+
 
 // 4. 検索処理
 function performSearch() {
