@@ -1,668 +1,911 @@
-/* script.js - キャッシュ機能付き修正版 - BUGFIX */
-
-// ==================== CONFIGURATION ====================
-const GAS_URL = 'https://script.google.com/macros/s/AKfycby4dEto3Abr_bmC7nCMBjALGkxut24WTWtDoODMUWXWvx4W7TTNTqXCGQhxRT5QV8qqeA/exec';
-
-// Cache configuration
-const CACHE_KEY = 'songListCache';
-const CACHE_EXPIRY_MS = 60 * 60 * 1000; // 1時間
-const SEARCH_LIMIT = 50; // 検索結果の最大件数
-const LIST_PAGE_SIZE = 50; // リスト表示の1ページあたりの件数
-
-// ==================== CACHE MANAGEMENT ====================
-function isLocalStorageAvailable() {
-    try {
-        const test = '__test__';
-        localStorage.setItem(test, test);
-        localStorage.removeItem(test);
-        return true;
-    } catch(e) {
-        console.warn('localStorage not available:', e);
-        return false;
-    }
-}
-
-function getCachedData() {
-    if (!isLocalStorageAvailable()) return null;
-    
-    try {
-        const cached = localStorage.getItem(CACHE_KEY);
-        if (!cached) return null;
-        
-        const { data, timestamp } = JSON.parse(cached);
-        const now = Date.now();
-        
-        if (now - timestamp < CACHE_EXPIRY_MS) {
-            console.log('キャッシュから読み込み');
-            return data;
-        }
-        
-        // 有効期限切れのキャッシュを削除
-        localStorage.removeItem(CACHE_KEY);
-        return null;
-    } catch (e) {
-        console.error('キャッシュ読み込みエラー:', e);
-        return null;
-    }
-}
-
-function setCachedData(data) {
-    if (!isLocalStorageAvailable()) return;
-    
-    try {
-        localStorage.setItem(CACHE_KEY, JSON.stringify({
-            data: data,
-            timestamp: Date.now()
-        }));
-        console.log('キャッシュに保存');
-    } catch (e) {
-        console.error('キャッシュ保存エラー:', e);
-    }
-}
-
-function clearCache() {
-    if (!isLocalStorageAvailable()) return;
-    
-    try {
-        localStorage.removeItem(CACHE_KEY);
-        console.log('キャッシュをクリア');
-    } catch (e) {
-        console.error('キャッシュクリアエラー:', e);
-    }
-}
-
-// ==================== GLOBAL STATE ====================
-let allSongs = [];
-let sortKey = '最終演奏';
-let sortAsc = false;
-let filteredListSongs = [];
-let currentPage = 1;
-let itemsPerPage = LIST_PAGE_SIZE;
-let listFilterTimeout = null;
-let isUpdating = false; // データ更新フラグ
-
-// ==================== UTILITY FUNCTIONS ====================
-
-/**
- * BUGFIX: Fixed RegExp syntax error
- * Original: new RegExp`(${q})`, 'gi')  <- WRONG
- * Fixed: new RegExp(`(${q})`, 'gi')     <- CORRECT
- */
-function highlight(text, q) {
-    if (!q) return text;
-    
-    // Escape special regex characters
-    const escaped = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const r = new RegExp(`(${escaped})`, 'gi');
-    return text.replace(r, '<span class="highlight">$1</span>');
-}
-
-function formatDate(dateStr) {
-    if (!dateStr || dateStr === '-') return '-';
-    try {
-        const d = new Date(dateStr);
-        if (isNaN(d.getTime())) return dateStr;
-        return `${d.getFullYear()}/${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getDate().toString().padStart(2, '0')}`;
-    } catch (e) { 
-        console.error('Date formatting error:', e);
-        return dateStr; 
-    }
-}
-
-function escapeHtml(str) {
-    if (!str) return '';
-    return str.replace(/[&<>"']/g, m => ({
-        '&': '&amp;', 
-        '<': '&lt;', 
-        '>': '&gt;', 
-        '"': '&quot;', 
-        "'": '&#39;'
-    }[m]));
-}
-
-// ==================== TAB SWITCHING ====================
-window.switchTab = (t) => {
-    document.querySelectorAll('.tab-btn, .tab-content').forEach(el => el.classList.remove('active'));
-    document.getElementById('tab-btn-' + t)?.classList.add('active');
-    document.getElementById(t + '-tab')?.classList.add('active');
+var allSongs = [];
+var filteredListSongs = [];
+var searchTimeout = null;
+var listFilterTimeout = null;
+var currentSort = { key: '最終演奏', ascending: false };
+var currentPage = 1;
+var itemsPerPage = 50;
+var reportMode = false;
+var reportingSong = null;
+// Default Settings
+var defaultSettings = {
+    searchSort: '最終演奏',
+    searchLimit: 50,
+    horizontalScroll: false,
+    listColumns: [
+        { key: '曲名', label: '曲名', visible: true },
+        { key: 'アーティスト', label: 'アーティスト', visible: true },
+        { key: '最終演奏', label: '最終演奏', visible: true },
+        { key: '演奏回数', label: '回数', visible: true },
+        { key: '曲名の読み', label: '曲名よみがな', visible: false },
+        { key: 'アーティストの読み', label: '歌手よみがな', visible: false },
+        { key: 'タイアップ', label: 'タイアップ', visible: false }
+    ]
 };
-
-// ==================== SEARCH FUNCTIONALITY ====================
-function performSearch() {
-    const input = document.getElementById('searchQuery');
-    const query = input.value.trim().toLowerCase();
-    const clearBtn = document.getElementById('clearSearch');
-    const type = document.querySelector('input[name="stype"]:checked').value;
-    const container = document.getElementById('searchResults');
-    const countDisplay = document.getElementById('resultCountInline');
-    
-    // Display/hide clear button
-    if (query) clearBtn.classList.add('show'); 
-    else clearBtn.classList.remove('show');
-    
-    // Reset if no query
-    if (!query) {
-        container.innerHTML = '';
-        if (countDisplay) countDisplay.innerText = '';
-        return;
+var appSettings = JSON.parse(JSON.stringify(defaultSettings));
+function loadSettings() {
+    const saved = localStorage.getItem('appSettings');
+    if (saved) {
+        try {
+            const parsed = JSON.parse(saved);
+            appSettings = { ...defaultSettings, ...parsed };
+            if (parsed.listColumns && Array.isArray(parsed.listColumns)) {
+                appSettings.listColumns = parsed.listColumns;
+            }
+        } catch (e) { console.error('Settings parse error', e); }
     }
-    
-    // Filter results
-    const filtered = allSongs.filter(s => {
-        const fields = {
-            song: [s['曲名'], s['曲名の読み']],
-            artist: [s['アーティスト'], s['アーティストの読み']],
-            tieup: [s['タイアップ']],
-            all: [s['曲名'], s['曲名の読み'], s['アーティスト'], s['アーティストの読み'], s['タイアップ']]
-        };
-        const targets = fields[type] || fields['all'];
-        return targets.some(f => String(f || '').toLowerCase().includes(query));
+    applySettings();
+}
+function saveSettings() {
+    appSettings.searchSort = document.getElementById('settingSearchSort').value;
+    const limitVal = document.getElementById('settingSearchLimit').value;
+    appSettings.searchLimit = (limitVal === 'all') ? 'all' : parseInt(limitVal, 10);
+    appSettings.horizontalScroll = document.getElementById('settingHorizontalScroll').checked;
+    const colList = document.getElementById('columnSettingsList');
+    const newCols = [];
+    colList.querySelectorAll('.column-item').forEach(item => {
+        const key = item.dataset.key;
+        const visible = item.querySelector('input[type="checkbox"]').checked;
+        const label = item.querySelector('.column-name').textContent;
+        newCols.push({ key: key, label: label, visible: visible });
     });
-    
-    // Display count
-    if (countDisplay) countDisplay.innerText = filtered.length + '件';
-    
-    // Render results
+    appSettings.listColumns = newCols;
+    localStorage.setItem('appSettings', JSON.stringify(appSettings));
+    closeSettingsPopup();
+    applySettings();
+    performSearch();
+    renderListTable();
+}
+function applySettings() {
+    renderListHeader();
+}
+function showSettingsPopup() {
+    closeMenu();
+    document.getElementById('settingSearchSort').value = appSettings.searchSort;
+    document.getElementById('settingSearchLimit').value = appSettings.searchLimit;
+    const hScroll = document.getElementById('settingHorizontalScroll');
+    if (hScroll) hScroll.checked = appSettings.horizontalScroll;
+    checkSearchLimitWarning();
+    renderColumnSettingsList();
+    const popup = document.getElementById('settingsPopup');
+    popup.classList.remove('hidden');
+    const content = popup.querySelector('.popup-content');
+    if (content) content.scrollTop = 0;
+}
+function closeSettingsPopup(event) {
+    if (event && event.target.id !== 'settingsPopup') return;
+    document.getElementById('settingsPopup').classList.add('hidden');
+}
+function checkSearchLimitWarning() {
+    const val = document.getElementById('settingSearchLimit').value;
+    const warning = document.getElementById('searchLimitWarning');
+    if (val === 'all') warning.classList.remove('hidden');
+    else warning.classList.add('hidden');
+}
+function resetSettings() {
+    document.getElementById('settingSearchSort').value = defaultSettings.searchSort;
+    document.getElementById('settingSearchLimit').value = defaultSettings.searchLimit;
+    const hScroll = document.getElementById('settingHorizontalScroll');
+    if (hScroll) hScroll.checked = defaultSettings.horizontalScroll;
+    renderColumnSettingsList(defaultSettings.listColumns);
+    checkSearchLimitWarning();
+}
+function renderColumnSettingsList(columnsToRender) {
+    const container = document.getElementById('columnSettingsList');
     container.innerHTML = '';
-    const fragment = document.createDocumentFragment();
-    const displayCount = Math.min(filtered.length, SEARCH_LIMIT);
-    
-    if (filtered.length === 0) {
-        // Show empty state
-        const emptyMsg = document.createElement('div');
-        emptyMsg.style.cssText = 'text-align: center; padding: 40px; color: #718096; font-size: 16px;';
-        emptyMsg.innerText = '検索結果が見つかりません。';
-        container.appendChild(emptyMsg);
-        return;
-    }
-    
-    filtered.slice(0, displayCount).forEach(s => {
-        const item = document.createElement('div');
-        item.className = 'result-item';
-        
-        const title = highlight(escapeHtml(s['曲名'] || '不明'), query);
-        const artist = highlight(escapeHtml(s['アーティスト'] || '不明'), query);
-        const titleYomi = highlight(escapeHtml(s['曲名の読み'] || ''), query);
-        const artistYomi = highlight(escapeHtml(s['アーティストの読み'] || ''), query);
-        const tieup = s['タイアップ'] ? `<div class="song-tieup"><div class="tv-icon-20"></div><span>${highlight(escapeHtml(s['タイアップ']), query)}</span></div>` : '';
-        const count = s['演奏回数'] || 0;
-        const date = formatDate(s['最終演奏']);
-        
-        // BUGFIX: Replaced onclick handler with data attribute for better security
-        const copyVal = escapeHtml(`${s['曲名'] || ''} / ${s['アーティスト'] || ''}`);
-        item.innerHTML = `
-            <div class="song-title">${title}</div>
-            <div class="song-artist">${artist}</div>
-            <div class="song-yomi">${titleYomi} ${artistYomi}</div>
-            ${tieup}
-            <div class="song-meta">
-                <span>演奏回数: ${count}回</span>
-                <span>最終演奏: ${date}</span>
-            </div>
-            <button class="copy-btn" data-copy-text="${copyVal}">コピー</button>
-        `;
-        fragment.appendChild(item);
+    const cols = columnsToRender || appSettings.listColumns;
+    cols.forEach((col, index) => {
+        const div = document.createElement('div');
+        div.className = 'column-item';
+        div.draggable = true;
+        div.dataset.key = col.key;
+        div.innerHTML = `
+                <div class="column-handle" style="cursor: grab;">☰</div>
+                <input type="checkbox" class="column-checkbox" ${col.visible ? 'checked' : ''}>
+                <span class="column-name">${escapeHtml(col.label)}</span>
+                <div class="column-move-btns">
+                    <button class="move-btn" onclick="moveColumn(${index}, -1)" ${index === 0 ? 'disabled' : ''}>▲</button>
+                    <button class="move-btn" onclick="moveColumn(${index}, 1)" ${index === cols.length - 1 ? 'disabled' : ''}>▼</button>
+                </div>
+            `;
+        div.addEventListener('dragstart', handleDragStart, false);
+        div.addEventListener('dragenter', handleDragEnter, false);
+        div.addEventListener('dragover', handleDragOver, false);
+        div.addEventListener('dragleave', handleDragLeave, false);
+        div.addEventListener('drop', handleDrop, false);
+        div.addEventListener('dragend', handleDragEnd, false);
+        container.appendChild(div);
     });
-    container.appendChild(fragment);
-    
-    // Show "more results" message
-    if (filtered.length > SEARCH_LIMIT) {
-        const moreMsg = document.createElement('div');
-        moreMsg.style.cssText = 'text-align: center; padding: 20px; color: #718096; font-size: 14px;';
-        moreMsg.innerText = `... 他 ${filtered.length - SEARCH_LIMIT} 件 ...`;
-        container.appendChild(moreMsg);
-    }
 }
-
-// ==================== LIST FUNCTIONALITY ====================
-function renderTable() {
-    const tbody = document.getElementById('songListBody');
-    if (!tbody) return;
-    
-    const targetList = filteredListSongs.length > 0 || (document.getElementById('listFilter') && document.getElementById('listFilter').value === '') ? filteredListSongs : allSongs;
-    
-    const sorted = [...targetList].sort((a, b) => {
-        let v1 = a[sortKey] || '', v2 = b[sortKey] || '';
-        if (sortKey === '演奏回数') { 
-            v1 = Number(v1) || 0; 
-            v2 = Number(v2) || 0; 
+let dragSrcEl = null;
+function handleDragStart(e) {
+    dragSrcEl = this;
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/html', this.outerHTML);
+    this.classList.add('dragging');
+}
+function handleDragOver(e) {
+    if (e.preventDefault) { e.preventDefault(); }
+    e.dataTransfer.dropEffect = 'move';
+    this.classList.add('drag-over');
+    return false;
+}
+function handleDragEnter(e) { this.classList.add('drag-over'); }
+function handleDragLeave(e) { this.classList.remove('drag-over'); }
+function handleDrop(e) {
+    if (e.stopPropagation) { e.stopPropagation(); }
+    if (dragSrcEl !== this) {
+        const container = document.getElementById('columnSettingsList');
+        const allItems = [...container.querySelectorAll('.column-item')];
+        const srcIndex = allItems.indexOf(dragSrcEl);
+        const dstIndex = allItems.indexOf(this);
+        if (srcIndex < dstIndex) {
+            container.insertBefore(dragSrcEl, this.nextSibling);
+        } else {
+            container.insertBefore(dragSrcEl, this);
         }
-        return sortAsc ? (v1 > v2 ? 1 : -1) : (v1 < v2 ? 1 : -1);
-    });
-    
-    const start = (currentPage - 1) * itemsPerPage;
-    const pageItems = sorted.slice(start, start + itemsPerPage);
-    
-    tbody.innerHTML = '';
-    
-    if (pageItems.length === 0) {
-        const emptyRow = document.createElement('tr');
-        emptyRow.innerHTML = '<td colspan="4" style="text-align: center; color: #718096; padding: 40px;">検索結果がありません。</td>';
-        tbody.appendChild(emptyRow);
-        return;
+        updateMoveButtons();
     }
-    
-    const fragment = document.createDocumentFragment();
-    
-    pageItems.forEach(s => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td>${escapeHtml(s['曲名'] || '-')}</td>
-            <td>${escapeHtml(s['アーティスト'] || '-')}</td>
-            <td>${s['演奏回数'] || 0}</td>
-            <td>${formatDate(s['最終演奏'])}</td>
-        `;
-        fragment.appendChild(tr);
-    });
-    tbody.appendChild(fragment);
-    renderPagination(Math.ceil(sorted.length / itemsPerPage));
+    return false;
 }
-
-function renderPagination(totalPages) {
-    const div = document.getElementById('listPagination');
-    if (!div) return;
-    div.innerHTML = '';
-    if (totalPages <= 1) return;
-    
-    const createBtn = (text, page) => {
-        const btn = document.createElement('button');
-        btn.className = 'page-btn' + (page === currentPage ? ' active' : '');
-        btn.textContent = text;
-        btn.onclick = () => { 
-            currentPage = page; 
-            renderTable(); 
-            document.querySelector('.table-container').scrollIntoView({ behavior: 'smooth' }); 
-        };
-        return btn;
-    };
-    
-    div.appendChild(createBtn('<', Math.max(1, currentPage - 1)));
-    div.appendChild(createBtn(currentPage + ' / ' + totalPages, currentPage));
-    div.appendChild(createBtn('>', Math.min(totalPages, currentPage + 1)));
+function handleDragEnd(e) {
+    this.classList.remove('dragging');
+    document.querySelectorAll('.column-item').forEach(item => item.classList.remove('drag-over'));
 }
-
-function filterList() {
-    const query = document.getElementById('listFilter').value.trim().toLowerCase();
-    if (!query) {
-        filteredListSongs = [...allSongs];
+function moveColumn(index, direction) {
+    const colList = document.getElementById('columnSettingsList');
+    const items = Array.from(colList.querySelectorAll('.column-item'));
+    const newIndex = index + direction;
+    if (newIndex < 0 || newIndex >= items.length) return;
+    const currentItem = items[index];
+    const swapItem = items[newIndex];
+    if (direction < 0) {
+        colList.insertBefore(currentItem, swapItem);
     } else {
-        filteredListSongs = allSongs.filter(s =>
-            String(s['曲名'] || '').toLowerCase().includes(query) ||
-            String(s['アーティスト'] || '').toLowerCase().includes(query) ||
-            String(s['タイアップ'] || '').toLowerCase().includes(query)
-        );
+        colList.insertBefore(swapItem, currentItem);
     }
-    currentPage = 1;
-    renderTable();
+    updateMoveButtons();
 }
-
-// ==================== EVENT HANDLERS ====================
-window.handleSort = (key) => {
-    sortAsc = (sortKey === key) ? !sortAsc : false;
-    sortKey = key;
-    renderTable();
-};
-
-window.copyText = (txt) => {
-    navigator.clipboard.writeText(txt).then(() => {
-        const t = document.getElementById('copyToast');
-        if (t) {
-            t.classList.add('show');
-            setTimeout(() => t.classList.remove('show'), 2000);
-        }
-    }).catch(err => {
-        console.error('Copy failed:', err);
+function updateMoveButtons() {
+    const colList = document.getElementById('columnSettingsList');
+    const items = colList.querySelectorAll('.column-item');
+    items.forEach((item, index) => {
+        const btns = item.querySelectorAll('.move-btn');
+        btns[0].disabled = (index === 0);
+        btns[0].setAttribute('onclick', `moveColumn(${index}, -1)`);
+        btns[1].disabled = (index === items.length - 1);
+        btns[1].setAttribute('onclick', `moveColumn(${index}, 1)`);
     });
-};
-
-function initDragScroll() {
-    const s = document.getElementById('searchTypeGroup');
-    if (!s) return;
-    let isDown = false, startX, scrollLeft;
-    
-    s.onmousedown = (e) => {
+}
+function renderListHeader() {
+    const thead = document.querySelector('#songsTable thead tr');
+    let html = '';
+    appSettings.listColumns.forEach(col => {
+        if (col.visible) {
+            html += `<th onclick="sortTable('${col.key}')">${escapeHtml(col.label)} ↕</th>`;
+        }
+    });
+    if (reportMode) {
+        html += '<th style="width:60px;">報告</th>';
+    }
+    thead.innerHTML = html;
+}
+function initTableDragScroll() {
+    const slider = document.querySelector('.table-container');
+    let isDown = false;
+    let startX;
+    let scrollLeft;
+    slider.addEventListener('mousedown', (e) => {
+        if (e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT') return;
         isDown = true;
-        s.style.cursor = 'grabbing';
-        startX = e.pageX - s.offsetLeft;
-        scrollLeft = s.scrollLeft;
-    };
-    
-    window.onmouseup = () => {
-        isDown = false;
-        if (s) s.style.cursor = 'grab';
-    };
-    
-    s.onmousemove = (e) => {
+        slider.style.cursor = 'grabbing';
+        startX = e.pageX - slider.offsetLeft;
+        scrollLeft = slider.scrollLeft;
+    });
+    slider.addEventListener('mouseleave', () => { isDown = false; slider.style.cursor = 'default'; });
+    slider.addEventListener('mouseup', () => { isDown = false; slider.style.cursor = 'default'; });
+    slider.addEventListener('mousemove', (e) => {
         if (!isDown) return;
         e.preventDefault();
-        const x = e.pageX - s.offsetLeft;
-        s.scrollLeft = scrollLeft - (x - startX);
-    };
-}
-
-/**
- * バーガーメニューの初期化
- */
-function setupBurgerMenu() {
-    const burgerBtn = document.getElementById('burgerBtn');
-    const burgerMenu = document.getElementById('burgerMenu');
-    const burgerMenuItems = document.querySelectorAll('.burger-menu-item');
-    
-    if (!burgerBtn || !burgerMenu) return;
-    
-    // ボタンをクリックしてメニューを開閉
-    burgerBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        burgerBtn.classList.toggle('active');
-        burgerMenu.classList.toggle('active');
+        const x = e.pageX - slider.offsetLeft;
+        const walk = (x - startX) * 1;
+        slider.scrollLeft = scrollLeft - walk;
     });
-    
-    // メニュー項目をクリック
-    burgerMenuItems.forEach(item => {
-        item.addEventListener('click', (e) => {
-            // ボタンの場合のみメニューを閉じる（リンクはそのまま遷移）
-            if (item.tagName === 'BUTTON') {
-                e.preventDefault();
-                closeBurgerMenu();
+}
+function initDragScroll() {
+    const searchType = document.querySelector('.search-type');
+    let isDown = false;
+    let startX;
+    let scrollLeft;
+    searchType.addEventListener('mousedown', (e) => {
+        isDown = true;
+        startX = e.pageX - searchType.offsetLeft;
+        scrollLeft = searchType.scrollLeft;
+        searchType.style.cursor = 'grabbing';
+        searchType.style.setProperty('--hide-arrow', 'none');
+    });
+    searchType.addEventListener('mouseleave', () => {
+        isDown = false;
+        searchType.style.cursor = 'grab';
+    });
+    searchType.addEventListener('mouseup', () => {
+        isDown = false;
+        searchType.style.cursor = 'grab';
+    });
+    searchType.addEventListener('mousemove', (e) => {
+        if (!isDown) return;
+        e.preventDefault();
+        const x = e.pageX - searchType.offsetLeft;
+        const walk = (x - startX) * 1;
+        searchType.scrollLeft = scrollLeft - walk;
+    });
+    searchType.style.cursor = 'grab';
+}
+function initScrollToTopBtn() {
+    const scrollBtn = document.getElementById('scrollToTopBtn');
+    window.addEventListener('scroll', () => {
+        if (window.pageYOffset > 300) {
+            scrollBtn.classList.add('show');
+        } else {
+            scrollBtn.classList.remove('show');
+        }
+    });
+}
+function scrollToTop() {
+    window.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+    });
+}
+function toggleMenu() {
+    const menu = document.getElementById('burgerMenu');
+    const overlay = document.getElementById('menuOverlay');
+    const btn = document.getElementById('burgerBtn');
+    menu.classList.toggle('hidden');
+    overlay.classList.toggle('hidden');
+    btn.classList.toggle('open');
+}
+function closeMenu() {
+    const menu = document.getElementById('burgerMenu');
+    const overlay = document.getElementById('menuOverlay');
+    const btn = document.getElementById('burgerBtn');
+    menu.classList.add('hidden');
+    overlay.classList.add('hidden');
+    btn.classList.remove('open');
+}
+function showAboutPopup() {
+    closeMenu();
+    const popup = document.getElementById('aboutPopup');
+    popup.classList.remove('hidden');
+}
+function closeAboutPopup(event) {
+    if (event && event.target.id !== 'aboutPopup') return;
+    const popup = document.getElementById('aboutPopup');
+    popup.classList.add('hidden');
+}
+function toggleReportMode() {
+    closeMenu();
+    reportMode = !reportMode;
+    const reportBtn = document.getElementById('reportBtn');
+    if (reportMode) {
+        reportBtn.innerHTML = `
+                <svg class="report-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z" />
+                </svg>
+                <span>報告モードを終了</span>
+            `;
+        showModePopup();
+    } else {
+        reportBtn.innerHTML = `
+                <svg class="report-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z" />
+                </svg>
+                <span>誤りを報告</span>
+            `;
+    }
+    updateReportButtonState();
+    performSearch();
+    renderListHeader();
+    renderListTable();
+}
+function showModePopup() {
+    const popup = document.createElement('div');
+    popup.className = 'popup-overlay';
+    popup.style.animation = 'popupFadeIn 0.3s ease';
+    popup.innerHTML = `
+            <div class="popup-modal" onclick="event.stopPropagation()">
+                <div class="popup-header">
+                    <h2>報告モードを開始しました</h2>
+                </div>
+                <div class="popup-content">
+                    <p style="text-align: center; line-height: 1.8; color: #4a5568;">
+                        報告モードになりました。<br>
+                        一覧の「報告」ボタンから、<br>
+                        または検索結果のボタンから報告できます。
+                    </p>
+                </div>
+                <div class="popup-footer">
+                    <button class="popup-ok-btn" onclick="this.closest('.popup-overlay').remove()">OK</button>
+                </div>
+            </div>
+        `;
+    document.body.appendChild(popup);
+}
+function updateReportButtonState() {
+    const reportBtn = document.getElementById('reportBtn');
+    reportBtn.classList.remove('disabled');
+}
+function openReportPopup(song) {
+    reportingSong = song;
+    document.getElementById('reportNewSongName').dataset.original = song['曲名'] || '';
+    document.getElementById('reportNewArtist').dataset.original = song['アーティスト'] || '';
+    document.getElementById('reportNewSongYomi').dataset.original = song['曲名の読み'] || '';
+    document.getElementById('reportNewArtistYomi').dataset.original = song['アーティストの読み'] || '';
+    document.getElementById('reportNewTieup').dataset.original = song['タイアップ'] || '';
+    document.getElementById('reportNewSongName').placeholder = song['曲名'] || '修正後の曲名';
+    document.getElementById('reportNewArtist').placeholder = song['アーティスト'] || '修正後のアーティスト';
+    document.getElementById('reportNewSongYomi').placeholder = song['曲名の読み'] || '修正後のよみがな';
+    document.getElementById('reportNewArtistYomi').placeholder = song['アーティストの読み'] || '修正後のよみがな';
+    document.getElementById('reportNewTieup').placeholder = song['タイアップ'] || '修正後のタイアップ';
+    document.getElementById('reportNewSongName').value = '';
+    document.getElementById('reportNewArtist').value = '';
+    document.getElementById('reportNewSongYomi').value = '';
+    document.getElementById('reportNewArtistYomi').value = '';
+    document.getElementById('reportNewTieup').value = '';
+    document.getElementById('reporterName').value = '';
+    document.querySelectorAll('input[name^="report"]').forEach(cb => {
+        if (cb.type === 'checkbox') cb.checked = false;
+    });
+    document.querySelectorAll('.form-input-report').forEach(input => {
+        input.disabled = true;
+    });
+    updateReportButtonDisabledState();
+    document.querySelectorAll('input[name^="report"][type="checkbox"]').forEach(cb => {
+        cb.addEventListener('change', updateReportButtonDisabledState);
+    });
+    const popup = document.getElementById('reportPopup');
+    popup.classList.remove('hidden');
+    const content = popup.querySelector('.popup-content');
+    if (content) content.scrollTop = 0;
+}
+function updateReportButtonDisabledState() {
+    const submitBtn = document.querySelector('.popup-submit-btn');
+    const checkedBoxes = document.querySelectorAll('input[name^="report"][type="checkbox"]:checked');
+    if (checkedBoxes.length === 0) {
+        submitBtn.disabled = true;
+        return;
+    }
+    submitBtn.disabled = false;
+}
+function toggleReportField(checkbox) {
+    const reportRow = checkbox.closest('.form-report-row');
+    const input = reportRow.querySelector('.form-input-report');
+    const originalValue = input.dataset.original || '';
+    if (checkbox.checked) {
+        input.disabled = false;
+        if (input.value === '') {
+            input.value = originalValue;
+        }
+        input.focus();
+    } else {
+        input.disabled = true;
+        input.value = '';
+    }
+    updateReportButtonDisabledState();
+}
+function closeReportPopup(event) {
+    if (event && event.target.id !== 'reportPopup') return;
+    const popup = document.getElementById('reportPopup');
+    popup.classList.add('hidden');
+    const isList = document.getElementById('list-tab').classList.contains('active');
+    if (!isList) {
+        reportingSong = null;
+    }
+}
+function submitReport() {
+    if (!reportingSong) return;
+    const checkedItems = [];
+    const updates = {};
+    document.querySelectorAll('input[name^="report"][type="checkbox"]:checked').forEach(cb => {
+        const fieldName = cb.name;
+        const reportRow = cb.closest('.form-report-row');
+        const input = reportRow.querySelector('.form-input-report');
+        const value = input.value.trim();
+        if (fieldName === 'reportSongName') {
+            checkedItems.push('曲名');
+            updates['修正後曲名'] = value;
+        } else if (fieldName === 'reportArtist') {
+            checkedItems.push('アーティスト');
+            updates['修正後アーティスト'] = value;
+        } else if (fieldName === 'reportSongYomi') {
+            checkedItems.push('曲名のよみがな');
+            updates['修正後曲名のよみがな'] = value;
+        } else if (fieldName === 'reportArtistYomi') {
+            checkedItems.push('アーティストのよみがな');
+            updates['修正後アーティストのよみがな'] = value;
+        } else if (fieldName === 'reportTieup') {
+            checkedItems.push('タイアップ');
+            updates['修正後タイアップ'] = value;
+        }
+    });
+    const reasonText = checkedItems.join('、') + 'が誤っている';
+    const reportData = {
+        理由: reasonText,
+        修正前曲名: reportingSong['曲名'] || '',
+        修正前アーティスト: reportingSong['アーティスト'] || '',
+        修正前曲名のよみがな: reportingSong['曲名の読み'] || '',
+        修正前アーティストのよみがな: reportingSong['アーティストの読み'] || '',
+        修正前タイアップ: reportingSong['タイアップ'] || '',
+        修正後曲名: updates['修正後曲名'] || '',
+        修正後アーティスト: updates['修正後アーティスト'] || '',
+        修正後曲名のよみがな: updates['修正後曲名のよみがな'] || '',
+        修正後アーティストのよみがな: updates['修正後アーティストのよみがな'] || '',
+        修正後タイアップ: updates['修正後タイアップ'] || '',
+        依頼者名: document.getElementById('reporterName').value || '匿名'
+    };
+    const submitBtn = document.querySelector('.popup-submit-btn');
+    submitBtn.disabled = true;
+    submitBtn.textContent = '送信中...';
+    const baseUrl = 'https://script.google.com/macros/s/AKfycbz1xZ1M2AWkHuDFkOy9Hb3sY3r7M7quHtnT4lVZqHV1SNikVds7K-gFDCURHRpR7T-4/exec';
+    const params = Object.keys(reportData)
+        .map(key => encodeURIComponent(key) + '=' + encodeURIComponent(reportData[key]))
+        .join('&');
+    const url = baseUrl + '?' + params;
+    fetch(url, { method: 'GET' })
+        .then(response => response.text())
+        .then(data => {
+            closeReportPopup();
+            showReportSuccessPopup();
+            submitBtn.disabled = false;
+            submitBtn.textContent = '報告する';
+        })
+        .catch(error => {
+            console.error('Report error:', error);
+            alert('報告の送信に失敗しました。もう一度お試しください。');
+            submitBtn.disabled = false;
+            submitBtn.textContent = '報告する';
+        });
+}
+function showReportSuccessPopup() {
+    const popup = document.createElement('div');
+    popup.className = 'popup-overlay';
+    popup.innerHTML = `
+            <div class="popup-modal" onclick="event.stopPropagation()">
+                <div class="popup-header">
+                    <h2>✓ 報告完了</h2>
+                </div>
+                <div class="popup-content">
+                    <p style="text-align: center; line-height: 1.8; color: #4a5568; font-size: 16px;">
+                        報告ありがとうございました！<br><br>
+                        ご指摘いただいた内容は<br>
+                        データ改善に役立てさせていただきます。
+                    </p>
+                </div>
+                <div class="popup-footer">
+                    <button class="popup-ok-btn" onclick="closeReportSuccessPopup(this)">OK</button>
+                </div>
+            </div>
+        `;
+    document.body.appendChild(popup);
+}
+function closeReportSuccessPopup(btn) {
+    btn.closest('.popup-overlay').remove();
+    reportMode = false;
+    const reportBtn = document.getElementById('reportBtn');
+    reportBtn.innerHTML = `
+            <svg class="report-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z" />
+            </svg>
+            <span>誤りを報告</span>
+        `;
+    updateReportButtonState();
+    performSearch();
+}
+function forceRefresh() {
+    closeMenu();
+    document.getElementById('loadingOverlay').classList.remove('hidden');
+    let currentTab = 'search';
+    if (document.getElementById('list-tab').classList.contains('active')) {
+        currentTab = 'list';
+    }
+    localStorage.setItem('lastActiveTab', currentTab);
+    localStorage.removeItem('songData');
+    localStorage.removeItem('lastFetchTime');
+    fetchFreshSongData();
+}
+function changeItemsPerPage() {
+    const val = document.getElementById('itemsPerPage').value;
+    if (val === 'all') {
+        itemsPerPage = filteredListSongs.length > 0 ? filteredListSongs.length : 10000;
+    } else {
+        itemsPerPage = parseInt(val, 10);
+    }
+    currentPage = 1;
+    renderListTable();
+}
+function performSearch() {
+    var query = document.getElementById('searchQuery').value.trim();
+    var queryLower = query.toLowerCase();
+    var searchType = document.querySelector('input[name="searchType"]:checked').value;
+    var resultsDiv = document.getElementById('searchResults');
+    var countSpan = document.getElementById('resultCountInline');
+    var noResults = document.getElementById('noSearchResults');
+    resultsDiv.innerHTML = '';
+    if (!query) {
+        countSpan.textContent = '';
+        noResults.style.display = 'none';
+        return;
+    }
+    let results = allSongs.filter(song => {
+        const title = (song['曲名'] || '').toLowerCase();
+        const titleYomi = (song['曲名の読み'] || '').toLowerCase().replace(/ /g, '');
+        const artist = (song['アーティスト'] || '').toLowerCase();
+        const artistYomi = (song['アーティストの読み'] || '').toLowerCase().replace(/ /g, '');
+        const tieup = (song['タイアップ'] || '').toLowerCase();
+        if (searchType === 'song') return title.includes(queryLower) || titleYomi.includes(queryLower);
+        if (searchType === 'artist') return artist.includes(queryLower) || artistYomi.includes(queryLower);
+        if (searchType === 'tieup') return tieup.includes(queryLower);
+        return title.includes(queryLower) || titleYomi.includes(queryLower) ||
+            artist.includes(queryLower) || artistYomi.includes(queryLower) ||
+            tieup.includes(queryLower);
+    });
+    if (appSettings && appSettings.searchSort) {
+        const key = appSettings.searchSort;
+        const asc = (key !== '最終演奏' && key !== '演奏回数');
+        results.sort((a, b) => {
+            let valA = a[key] ?? '';
+            let valB = b[key] ?? '';
+            if (key === '演奏回数') { valA = parseInt(valA) || 0; valB = parseInt(valB) || 0; }
+            if (valA < valB) return asc ? -1 : 1;
+            if (valA > valB) return asc ? 1 : -1;
+            return 0;
+        });
+    }
+    if (results.length === 0) {
+        countSpan.textContent = '0件';
+        noResults.style.display = 'block';
+    } else {
+        countSpan.textContent = results.length + '件';
+        noResults.style.display = 'none';
+        let displayLimit = 50;
+        if (appSettings && appSettings.searchLimit) {
+            if (appSettings.searchLimit === 'all') {
+                displayLimit = results.length;
+            } else {
+                displayLimit = parseInt(appSettings.searchLimit, 10);
+            }
+        }
+        const displayResults = results.slice(0, displayLimit);
+        let html = '';
+        displayResults.forEach(song => { html += createResultItem(song, query); });
+        if (results.length > displayLimit) {
+            html += '<div style="text-align:center; padding:10px; color:#aaa;">他 ' + (results.length - displayLimit) + ' 件... (設定で表示件数を変更できます)</div>';
+        }
+        resultsDiv.innerHTML = html;
+    }
+}
+function createResultItem(song, query) {
+    const date = song['最終演奏'] ? formatDate(song['最終演奏']) : '-';
+    const count = song['演奏回数'] || 0;
+    const title = song['曲名'] || '不明';
+    const artist = song['アーティスト'] || '不明';
+    const titleYomi = song['曲名の読み'] || '';
+    const artistYomi = song['アーティストの読み'] || '';
+    const tieup = song['タイアップ'] || '';
+    const hTitle = highlightText(title, query);
+    const hArtist = highlightText(artist, query);
+    const hTitleYomi = highlightText(titleYomi, query);
+    const hArtistYomi = highlightText(artistYomi, query);
+    const hTieup = highlightText(tieup, query);
+    const copyText = title + '／' + artist;
+    let yomiDisplay = (titleYomi || artistYomi) ? `<div class="song-yomi">${hTitleYomi} ${artistYomi ? '/ ' + hArtistYomi : ''}</div>` : '';
+    let tieupDisplay = tieup ? `<div class="song-tieup"><div class="tv-icon-20"></div><span>${hTieup}</span></div>` : '';
+    let buttonHTML = '';
+    if (reportMode) {
+        const songIndex = allSongs.indexOf(song);
+        buttonHTML = `<button class="copy-button report-button" onclick="openReportPopupByIndex(${songIndex})">報告</button>`;
+    } else {
+        buttonHTML = `<button class="copy-button" onclick="copyToClipboard('${escapeQuotes(copyText)}')">コピー</button>`;
+    }
+    return `
+        <div class="result-item">
+            <div class="song-title">${hTitle}</div>
+            <div class="song-artist">${hArtist}</div>
+            ${yomiDisplay}
+            ${tieupDisplay}
+            ${`<div class="song-meta">
+                  <span>演奏回数: ${count}回</span>
+                  <span>最終演奏: ${date}</span>
+                </div>`
+        }
+            ${buttonHTML}
+        </div>
+      `;
+}
+function openReportPopupByIndex(index) {
+    const song = allSongs[index];
+    openReportPopup(song);
+}
+function filterList() {
+    const query = document.getElementById('listFilter').value.trim().toLowerCase();
+    filteredListSongs = !query ? [...allSongs] : allSongs.filter(song =>
+        (song['曲名'] || '').toLowerCase().includes(query) ||
+        (song['曲名の読み'] || '').toLowerCase().includes(query) ||
+        (song['アーティスト'] || '').toLowerCase().includes(query) ||
+        (song['アーティストの読み'] || '').toLowerCase().includes(query) ||
+        (song['タイアップ'] || '').toLowerCase().includes(query)
+    );
+    sortData(currentSort.key, currentSort.ascending);
+    currentPage = 1;
+    renderListTable();
+}
+function sortTable(key) {
+    if (currentSort.key === key) {
+        currentSort.ascending = !currentSort.ascending;
+    } else {
+        currentSort.key = key;
+        currentSort.ascending = (key !== '最終演奏' && key !== '演奏回数');
+    }
+    sortData(currentSort.key, currentSort.ascending);
+    renderListTable();
+}
+function sortData(key, ascending) {
+    filteredListSongs.sort((a, b) => {
+        let valA = a[key] ?? '';
+        let valB = b[key] ?? '';
+        if (key === '演奏回数') { valA = parseInt(valA) || 0; valB = parseInt(valB) || 0; }
+        if (valA < valB) return ascending ? -1 : 1;
+        if (valA > valB) return ascending ? 1 : -1;
+        return 0;
+    });
+}
+function renderListTable() {
+    const tbody = document.getElementById('songListBody');
+    tbody.innerHTML = '';
+    const table = document.getElementById('songsTable');
+    if (appSettings.horizontalScroll) {
+        table.classList.add('nowrap-table');
+    } else {
+        table.classList.remove('nowrap-table');
+    }
+    if (filteredListSongs.length === 0) {
+        const visibleCols = appSettings.listColumns.filter(c => c.visible).length + (reportMode ? 1 : 0);
+        tbody.innerHTML = `<tr><td colspan="${visibleCols}" style="text-align:center; padding:20px;">該当する曲がありません</td></tr>`;
+        renderPagination(0);
+        return;
+    }
+    const start = (currentPage - 1) * itemsPerPage;
+    const pageItems = filteredListSongs.slice(start, start + itemsPerPage);
+    tbody.innerHTML = pageItems.map((song, idx) => {
+        let rowHtml = '<tr>';
+        appSettings.listColumns.forEach(col => {
+            if (col.visible) {
+                let val = song[col.key];
+                let displayVal = escapeHtml(val);
+                if (col.key === '最終演奏') {
+                    displayVal = `<span style="font-size:0.9em; color:#666;">${val ? formatDate(val) : '-'}</span>`;
+                } else if (col.key === '演奏回数') {
+                    displayVal = `<div style="text-align:center;">${val || 0}</div>`;
+                }
+                rowHtml += `<td>${displayVal}</td>`;
             }
         });
-    });
-    
-    // 外側をクリックしたらメニューを閉じる
-    document.addEventListener('click', (e) => {
-        if (!e.target.closest('.burger-menu')) {
-            closeBurgerMenu();
+        if (reportMode) {
+            const songIndex = allSongs.indexOf(song);
+            rowHtml += `<td style="text-align:center;"><button class="report-btn-small" onclick="openReportPopupByIndex(${songIndex})">報告</button></td>`;
         }
-    });
+        rowHtml += '</tr>';
+        return rowHtml;
+    }).join('');
+    renderPagination(Math.ceil(filteredListSongs.length / itemsPerPage));
 }
-
-/**
- * バーガーメニューを閉じる
- */
-function closeBurgerMenu() {
-    const burgerBtn = document.getElementById('burgerBtn');
-    const burgerMenu = document.getElementById('burgerMenu');
-    
-    if (burgerBtn) burgerBtn.classList.remove('active');
-    if (burgerMenu) burgerMenu.classList.remove('active');
+function renderPagination(totalPages) {
+    renderPaginationContainer(document.getElementById('listPaginationTop'), totalPages);
+    renderPaginationContainer(document.getElementById('listPaginationBottom'), totalPages);
 }
-
-// ==================== INITIALIZATION ====================
-window.onload = async () => {
-    initDragScroll();
-    setupBurgerMenu();
-    
-    const loader = document.getElementById('loadingOverlay');
+function renderPaginationContainer(container, totalPages) {
+    if (!container) return;
+    container.innerHTML = '';
+    if (totalPages <= 1) return;
+    let paddingPage = (window.innerWidth > 600) ? 1 : 0;
+    const isWide = (window.innerWidth > 500);
+    const paddingStart = 1 + paddingPage;
+    const paddingEnd = 2 + (2 * paddingPage);
+    let start = Math.max(1, currentPage - paddingStart);
+    let end = Math.min(totalPages, start + paddingEnd);
+    if (end - start < paddingEnd) start = Math.max(1, end - paddingEnd);
+    if (currentPage > 1) {
+        if (isWide) container.appendChild(createPageBtn('|<<', 1));
+        container.appendChild(createPageBtn('<', currentPage - 1));
+    }
+    for (let i = start; i <= end; i++) container.appendChild(createPageBtn(i, i));
+    if (currentPage < totalPages) {
+        container.appendChild(createPageBtn('>', currentPage + 1));
+        if (isWide) container.appendChild(createPageBtn('>>|', totalPages));
+    }
+}
+function createPageBtn(text, pageNum) {
+    const btn = document.createElement('button');
+    btn.className = 'page-btn' + (pageNum === currentPage ? ' active' : '');
+    btn.textContent = text;
+    btn.onclick = () => {
+        currentPage = pageNum;
+        renderListTable();
+        document.querySelector('.list-controls').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
+    return btn;
+}
+function highlightText(text, query) {
+    if (!query || !text) return escapeHtml(text);
+    const regex = new RegExp('(' + escapeRegex(query) + ')', 'gi');
+    return escapeHtml(text).replace(regex, '<span class="highlight">$1</span>');
+}
+function escapeRegex(string) { return string.replace(/[*|[\]\\]/g, '\\$&').replace(/./g, '\\s*$&').replace(/[.+?^${}()]/g, '\\$&'); }
+function formatDate(dateStr) {
+    const date = new Date(dateStr);
+    return isNaN(date.getTime()) ? dateStr : `${date.getFullYear()}/${date.getMonth() + 1}/${date.getDate()}`;
+}
+function escapeHtml(text) {
+    return String(text ?? '').replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+}
+function escapeQuotes(text) { return text.replace(/'/g, "\\'").replace(/"/g, '\\"'); }
+function copyToClipboard(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(showCopyToast).catch(() => fallbackCopy(text));
+    } else { fallbackCopy(text); }
+}
+function fallbackCopy(text) {
+    const el = document.createElement('textarea');
+    el.value = text;
+    document.body.appendChild(el);
+    el.select();
+    document.execCommand('copy');
+    document.body.removeChild(el);
+    showCopyToast();
+}
+function showCopyToast() {
+    const toast = document.getElementById('copyToast');
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 2000);
+}
+document.addEventListener('DOMContentLoaded', function () {
     const searchInput = document.getElementById('searchQuery');
-    const clearBtn = document.getElementById('clearSearch');
+    const searchClear = document.getElementById('searchClear');
+    const searchRadios = document.querySelectorAll('input[name="searchType"]');
+    function updateSearchClear() {
+        searchClear.classList.toggle('visible', searchInput.value.length > 0);
+    }
+    searchInput.addEventListener('input', function () {
+        updateSearchClear();
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(performSearch, 300);
+    });
+    searchClear.addEventListener('click', function () {
+        searchInput.value = '';
+        updateSearchClear();
+        searchInput.focus();
+        performSearch();
+    });
+    searchInput.addEventListener('keypress', function (e) {
+        if (e.key === 'Enter') { e.preventDefault(); searchInput.blur(); }
+    });
+    searchRadios.forEach(radio => radio.addEventListener('change', performSearch));
     const listFilter = document.getElementById('listFilter');
     const filterClear = document.getElementById('filterClear');
-    const refreshBtn = document.getElementById('refreshBtn');
-    
-    // Setup event listeners for clear buttons
-    if (clearBtn) {
-        clearBtn.onclick = () => {
-            searchInput.value = '';
-            performSearch();
-        };
+    function updateFilterClear() {
+        filterClear.classList.toggle('visible', listFilter.value.length > 0);
     }
-    
-    if (filterClear) {
-        filterClear.onclick = () => {
-            listFilter.value = '';
-            filterList();
-        }
-    }
-    
-    // リロードボタンのイベントリスナー
-    if (refreshBtn) {
-        refreshBtn.onclick = async () => {
-            await forceReloadData(refreshBtn, loader);
-            closeBurgerMenu();  // メニューを閉じる
-        };
-    }
-    
-    // BUGFIX: Use event delegation for copy buttons instead of onclick handlers
-    document.addEventListener('click', (e) => {
-        if (e.target.classList.contains('copy-btn')) {
-            const text = e.target.dataset.copyText;
-            if (text) copyText(text);
-        }
-    });
-    
-    // Fetch live stream status (non-blocking)
-    fetchLiveStatus();
-    
-    try {
-        // Check cache first
-        const cachedData = getCachedData();
-        
-        if (cachedData) {
-            // Display from cache immediately
-            allSongs = cachedData;
-            filteredListSongs = [...allSongs];
-            
-            // Setup event listeners
-            setupEventListeners();
-            
-            // Render initial content
-            renderTable();
-            
-            // Hide loading IMMEDIATELY after cache render
-            if (loader) loader.classList.add('hidden');
-            
-            // BUGFIX: Prevent data race - only update if fetch succeeds and data is different
-            // This runs in background without blocking UI
-            fetchDataInBackground();
-        } else {
-            // No cache, fetch from server
-            try {
-                const data = await fetchDataFromServer();
-                if (data && data.length > 0) {
-                    allSongs = data;
-                    filteredListSongs = [...allSongs];
-                    setCachedData(allSongs);
-                    
-                    // Setup event listeners
-                    setupEventListeners();
-                    
-                    // Render initial content
-                    renderTable();
-                } else {
-                    throw new Error('No data returned from server');
-                }
-            } catch (fetchError) {
-                console.error('Fetch error:', fetchError);
-                handleLoadingError(loader, "データの読み込みに失敗しました。再読み込みしてください。");
-                return; // Stop execution here
-            }
-            
-            // Hide loading after successful fetch and render
-            if (loader) loader.classList.add('hidden');
-        }
-    } catch (e) {
-        console.error("Data Load Error:", e);
-        handleLoadingError(loader, "データの読み込みに失敗しました。再読み込みしてください。");
-    }
-};
-
-/**
- * BUGFIX: Separated fetch logic to prevent race conditions
- */
-function setupEventListeners() {
-    const searchInput = document.getElementById('searchQuery');
-    const listFilter = document.getElementById('listFilter');
-    const filterClear = document.getElementById('filterClear');
-    
-    searchInput?.addEventListener('input', performSearch);
-    document.querySelectorAll('input[name="stype"]').forEach(r => {
-        r.addEventListener('change', performSearch);
-    });
-    
-    listFilter?.addEventListener('input', function () {
+    listFilter.addEventListener('input', function () {
+        updateFilterClear();
         clearTimeout(listFilterTimeout);
         listFilterTimeout = setTimeout(filterList, 300);
-        if (filterClear) filterClear.classList.toggle('visible', listFilter.value.length > 0);
     });
-}
-
-/**
- * BUGFIX: Separate background fetch to prevent overwriting user data
- */
-async function fetchDataInBackground() {
-    if (isUpdating) return;
-    isUpdating = true;
-    
-    try {
-        const data = await fetchDataFromServer();
-        if (data && data.length > 0) {
-            // Only update if data is different
-            if (JSON.stringify(data) !== JSON.stringify(allSongs)) {
-                allSongs = data;
-                setCachedData(allSongs);
-                
-                // Re-filter and render only if needed
-                if (filteredListSongs.length === 0) {
-                    filteredListSongs = [...allSongs];
-                }
-                renderTable();
-                console.log('バックグラウンドで更新完了');
-            }
-        }
-    } catch (error) {
-        console.error('バックグラウンド更新エラー:', error);
-    } finally {
-        isUpdating = false;
-    }
-}
-
-/**
- * BUGFIX: Added proper error handling for fetch
- */
-async function fetchDataFromServer() {
-    try {
-        const response = await fetch(GAS_URL, {
-            method: 'GET',
-            headers: {
-                'Accept': 'application/json'
-            }
-        });
-        
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        
-        if (!Array.isArray(data)) {
-            throw new Error('Invalid data format: expected array');
-        }
-        
-        return data;
-    } catch (error) {
-        console.error('Fetch error:', error);
-        throw error;
-    }
-}
-
-/**
- * BUGFIX: Better error handling
- */
-function handleLoadingError(loader, message) {
-    if (loader) {
-        const text = loader.querySelector('.loading-text');
-        if (text) text.innerText = message;
-        // Hide the loader after showing error for 3 seconds
-        setTimeout(() => {
-            loader.classList.add('hidden');
-        }, 3000);
-    }
-}
-
-/**
- * 強制的にデータをリロード
- */
-async function forceReloadData(refreshBtn, loader) {
-    // すでにリロード中なら実行しない
-    if (isUpdating) return;
-    
-    isUpdating = true;
-    
-    // ローディング表示をON
-    if (loader) {
-        loader.classList.remove('hidden');
-        const text = loader.querySelector('.loading-text');
-        if (text) text.innerText = 'データを再読み込んでいます...';
-    }
-    
-    try {
-        // キャッシュをクリア
-        clearCache();
-        
-        // サーバーから強制取得
-        const data = await fetchDataFromServer();
-        if (data && data.length > 0) {
-            allSongs = data;
-            filteredListSongs = [...allSongs];
-            setCachedData(allSongs);
-            
-            // 現在のビューをリセット
-            currentPage = 1;
-            sortKey = '最終演奏';
-            sortAsc = false;
-            
-            // テーブルを再描画
-            renderTable();
-            
-            // 検索結果をクリア
-            const searchInput = document.getElementById('searchQuery');
-            searchInput.value = '';
-            document.getElementById('searchResults').innerHTML = '';
-            document.getElementById('resultCountInline').innerText = '';
-            
-            // リスト内フィルタをクリア
-            const listFilter = document.getElementById('listFilter');
-            listFilter.value = '';
-            
-            console.log('データを強制リロードしました');
-            
-            // ローディング非表示
-            if (loader) loader.classList.add('hidden');
-        } else {
-            throw new Error('No data returned from server');
-        }
-    } catch (error) {
-        console.error('Reload error:', error);
-        
-        // ローディング非表示
-        if (loader) {
-            const text = loader.querySelector('.loading-text');
-            if (text) text.innerText = 'リロードに失敗しました';
-            setTimeout(() => loader.classList.add('hidden'), 2000);
-        }
-    } finally {
-        isUpdating = false;
-    }
-}
-
-/**
- * Fetch live stream status
- */
-function fetchLiveStatus() {
+    filterClear.addEventListener('click', function () {
+        listFilter.value = '';
+        updateFilterClear();
+        listFilter.focus();
+        filterList();
+    });
+});
+window.onload = function () {
+    initDragScroll();
+    initTableDragScroll();
+    initScrollToTopBtn();
+    loadSettings();
+    const API_URL = 'https://script.google.com/macros/s/AKfycby4dEto3Abr_bmC7nCMBjALGkxut24WTWtDoODMUWXWvx4W7TTNTqXCGQhxRT5QV8qqeA/exec';
     fetch('https://script.googleusercontent.com/macros/echo?user_content_key=AehSKLg3Mh9pD1cfoLjzGKoWN85Gk3bYFpPA8-oPlNbFXDQwZSrx-7YQn1Qy7_tmEpzzorOTQow9QIbVsKVjgfXUiI3hUpHNtQaVxF5FRYozt4ziG3OutQJSWtSqXCcdeJU7a_Uhr2j0KiH3Kw9PaSSjYaZ-Pxx2MUB2AEtN-ozLj-H6GBxw8JOISVRz8QT-ziXa-lUbnL0NULykgmNlOLH-s4Jnt-Py_bQ05foDbnH9BD7EgMzudhnWfWM6yEP4M21osh0JprLH-ddjFiDhSqven0yIHGmO3cNRqPPRjvzm&lib=MXVx9ipRNFTfomE6WbanXaGJpguNqVXQJ')
         .then(response => response.json())
         .then(data => {
-            const ytLink = document.getElementById('headerYtLink');
+            const ytLink = document.getElementById('ytLink');
             if (data.liveVideoUrl && data.liveVideoUrl.trim() !== '') {
                 ytLink.href = data.liveVideoUrl;
                 ytLink.title = 'ライブ配信を開く';
-                const liveBadge = document.getElementById('liveBadge');
-                if (liveBadge) {
-                    liveBadge.classList.add('active');
-                }
+                const liveBadge = document.createElement('span');
+                liveBadge.className = 'live-badge';
+                liveBadge.textContent = 'LIVE';
+                ytLink.appendChild(liveBadge);
             }
         })
-        .catch(error => {
-            console.warn('ライブ配信URL取得エラー:', error);
-        });
+        .catch(error => console.error('ライブ配信URL取得エラー:', error));
+    const cachedData = localStorage.getItem('songData');
+    const lastFetchTime = localStorage.getItem('lastFetchTime');
+    const now = Date.now();
+    const oneHour = 60 * 60 * 1000;
+    if (cachedData && lastFetchTime && (now - parseInt(lastFetchTime) < oneHour)) {
+        console.log('Using cached data');
+        try {
+            onDataLoaded(JSON.parse(cachedData), true);
+        } catch (e) {
+            console.error('Cache parse error', e);
+            fetchFreshSongData();
+        }
+    } else {
+        console.log('Fetching fresh data');
+        fetchFreshSongData();
+    }
+};
+function switchTab(tabName) {
+    if (reportMode && tabName === 'list') {
+        reportMode = false;
+        const reportBtn = document.getElementById('reportBtn');
+        reportBtn.innerHTML = `
+                <svg class="report-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z" />
+                </svg>
+                <span>誤りを報告</span>
+            `;
+        performSearch();
+    }
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.getAttribute('onclick').includes(tabName));
+    });
+    document.querySelectorAll('.tab-content').forEach(content => {
+        content.classList.remove('active');
+        content.classList.add('hidden');
+    });
+    const target = document.getElementById(tabName + '-tab');
+    target.classList.add('active');
+    target.classList.remove('hidden');
+    updateReportButtonState();
+}
+function onDataLoaded(data, isCached) {
+    if (!isCached) {
+        try {
+            localStorage.setItem('songData', JSON.stringify(data));
+            localStorage.setItem('lastFetchTime', Date.now().toString());
+        } catch (e) { console.error('Storage error', e); }
+    }
+    allSongs = data;
+    filteredListSongs = [...allSongs];
+    document.getElementById('loadingOverlay').classList.add('hidden');
+    const lastTab = localStorage.getItem('lastActiveTab');
+    if (lastTab === 'list') {
+        switchTab('list');
+        filterList();
+    } else {
+        switchTab('search');
+        performSearch();
+        if (!localStorage.getItem('initialFocusDone')) {
+            const sq = document.getElementById('searchQuery');
+            if (sq) sq.focus();
+            localStorage.setItem('initialFocusDone', 'true');
+        }
+    }
+    localStorage.removeItem('lastActiveTab');
+    sortData(currentSort.key, currentSort.ascending);
+    renderListTable();
+}
+function onError(error) {
+    console.error(error);
+    document.getElementById('loadingOverlay').innerHTML = '<div class="loading-text" style="color:white;">エラーが発生しました: ' + error.message + '</div><button onclick="location.reload()" style="padding:10px 20px; border-radius:5px; border:none; background:white; color:#764ba2; font-weight:bold; cursor:pointer;">再読み込み</button>';
+}
+function fetchFreshSongData() {
+    const API_URL = 'https://script.google.com/macros/s/AKfycby4dEto3Abr_bmC7nCMBjALGkxut24WTWtDoODMUWXWvx4W7TTNTqXCGQhxRT5QV8qqeA/exec';
+    fetch(API_URL)
+        .then(response => {
+            if (!response.ok) throw new Error('Network response was not ok');
+            return response.json();
+        })
+        .then(data => onDataLoaded(data, false))
+        .catch(error => onError(error));
 }
