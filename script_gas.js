@@ -1,4 +1,3 @@
-<script>
     var allSongs = [];
     var filteredListSongs = [];
     var searchTimeout = null;
@@ -954,4 +953,3 @@
         toast.classList.add('show');
         setTimeout(() => toast.classList.remove('show'), 2000);
     }
-</script>
