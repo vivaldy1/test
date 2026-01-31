@@ -1394,13 +1394,10 @@
     /* Selected Row Style */
     tr.selected-row td {
         background-color: #fff5f5 !important;
-        /* Light red/pinkish */
-        border-top: 1px solid #fc8181;
-        border-bottom: 1px solid #fc8181;
     }
 
     tr.selected-row td:first-child {
-        border-left: 1px solid #fc8181;
+        border-left: 3px solid #fc8181;
     }
 
     tr.selected-row td:last-child {
